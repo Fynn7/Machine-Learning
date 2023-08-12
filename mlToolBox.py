@@ -1,10 +1,12 @@
+import sys
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
+import matplotlib.pylab as plt
 import seaborn as sns
 from functools import wraps
-import sys
 from scipy import stats
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
 
 
 def trace(func: object) -> object:
@@ -34,9 +36,11 @@ def trace(func: object) -> object:
             *args: unused parameters without arguments' names
             *kwargs: unused parameters with arguments' names
             """
+            separator()
             debug_log.write('Calling function: {}\n'.format(func.__name__))
             res = func(*args, **kwargs)
             debug_log.write('Return value: {}\n'.format(res))
+            separator()
             return res
         return callf
     else:
@@ -49,7 +53,7 @@ def separator(symb: str | None = '-', l: int = 42, noprint: bool | None = False)
 
     Args:
     - l: length of separator
-    - noprint: instead of directly printing
+    - noprint: instead of directly printing, returns the separator string
 
     '''
     if not isinstance(symb, str) or not isinstance(l, int):
@@ -67,7 +71,7 @@ def spacer(n: int | None = 2, noprint: bool | None = False) -> None | str:
 
     Args:
     - n: length of the empty space
-    - noprint: instead of directly printing
+    - noprint: instead of directly printing, it returns multiple lines of blanks
     '''
     if not isinstance(n, int):
         raise TypeError(f"Argument Type Error: {type(n)}==int?")
@@ -77,52 +81,43 @@ def spacer(n: int | None = 2, noprint: bool | None = False) -> None | str:
     print(sp)
 
 
-def dfChecker(df: pd.DataFrame | pd.Series = ...) -> None:
+def dfChecker(df: pd.DataFrame | pd.Series) -> pd.DataFrame:
     '''
     for Developer
 
-    Check if the given argument is dataframe.
+    Check if the given argument is dataframe. If not, it returns a dataframe of the input data instead of original inputted datatype
 
     Args:
-    - df: data source
+    - df: dataframe-like dataset
     '''
-    if type(df) != pd.DataFrame:
+    try:
+        df = pd.DataFrame(df)
+    except Exception as e:
         separator()
         raise TypeError(
-            f"Please input dataframe as dataframe, instead of {type(df)}.\nIf you are using dfChecker() as a public function, please input dataframe instead.\n")
-
+            f'''\nPlease input dataframe as dataframe or at least dataframe-like, instead of {type(df)}.\nIf you are using dfChecker() as a public function, please input dataframe instead.\n
+            Original Error Message:
+            {e}
+            ''')
+    return df
 
 @trace
 class DataAnalysis:
     def __init__(self, df: pd.DataFrame | pd.Series) -> None:
-        dfChecker(df)
-        self._data = df
+        # print("Start initializing instance...")
+        self._data = dfChecker(df)
 
     def getData(self) -> pd.DataFrame:
+        '''
+        Get the current dataframe.
+        '''
         return self._data
 
     def dataIntro(self) -> None:
         '''
-        Print all data information and description.
-        Instance method
+        Print all data information and description of current dataframe.
         '''
         df = self.getData()
-        separator()
-        print("Basic Information of dataframe")
-        separator()
-        df.info()
-        spacer()
-        print(df.describe())
-        separator()
-        print("end dataIntro")
-        separator()
-
-    def dataIntro(cls, df: pd.DataFrame | pd.Series) -> None:
-        '''
-        Print all data information and description.
-        Class method
-        '''
-        dfChecker(df)
         separator()
         print("Basic Information of dataframe")
         separator()
@@ -135,7 +130,13 @@ class DataAnalysis:
 
     def checkTypes(self) -> None:
         '''
-        Analyse the types of the given dataframe.
+        Print out all kinds of types of the current dataframe.
+
+        How to use:
+
+        `da=DataAnalysis()`\n
+        `da.checkTypes()`
+
         '''
         df = self.getData()
 
@@ -145,28 +146,27 @@ class DataAnalysis:
         print("You can see more detailed information with df.info(), which is already displayed before.")
         print(typestr)
 
-    def checkTypes(cls, df: pd.DataFrame | pd.Series) -> None:
+    def getNumCols(self,subset:str|list=None) -> pd.DataFrame:
         '''
-        Analyse the types of the given dataframe.
+        Auxillary method
+
+        Return dataframe only contains type 'float64' and 'int64'.
+
+        Args:
+        - subset: if you want to return a part of columns and only contain numbers, use `subset` to input the wanted dataframe
+        `da.getNumCols(subset=['col1','col2',...]])`
+        
         '''
-        dfChecker(df)
-        typelist = df.dtypes.unique()
-        typestr = str(list(typelist)).strip('[]')
-        print(f"{len(typelist)} types in this dataframe:")
-        print("You can see more detailed information with df.info(), which is already displayed before.")
-        print(typestr)
-
-    def getNumCols(self) -> pd.DataFrame:
-        df = self.getData()
-
-        return df.select_dtypes(include=['float64', 'int64'])
-
-    def getNumCols(cls, df: pd.DataFrame | pd.Series) -> pd.DataFrame:
+        df=self.getData()
+        if subset==None:
+            subset=df.columns
         return df.select_dtypes(include=['float64', 'int64'])
 
     def createCorrMat(self, corrType: str = 'pearson') -> pd.DataFrame:
         '''
-        Return: corrmat (pd.Dataframe)
+        Auxillary method
+
+        Return: corrmat as `pd.Dataframe`
 
         Args:
         - corrType: 'pearson','kendall', 'spearman'
@@ -178,20 +178,7 @@ class DataAnalysis:
         corrmat = nums.corr(method=corrType)
         return corrmat
 
-    def createCorrMat(cls, df: pd.DataFrame | pd.Series, corrType: str = 'pearson') -> pd.DataFrame:
-        '''
-        Return: corrmat (pd.Dataframe)
-
-        Args:
-        - corrType: 'pearson','kendall', 'spearman'
-        '''
-        dfChecker(df)
-        # only analyse numbers
-        nums = cls.getNumCols(df)
-        corrmat = nums.corr(method=corrType)
-        return corrmat
-
-    def findCorr(self, col: str, corrMin: float | None = 0.5, corrMax: float | None = 1, corrType: str = 'pearson', head: int = 10) -> tuple:
+    def findCorr(self, x: str, corrMin: float | None = 0.5, corrMax: float | None = 1, corrType: str = 'pearson', head: int | None = None) -> tuple:
         '''
         Find the correlation of the whole dataframe.
         If you want to analyse as well the string and other types of data,
@@ -206,32 +193,14 @@ class DataAnalysis:
         - corrMax: upper bound of the correlation choosing range
         - corrType: 'pearson','kendall', 'spearman'
         '''
-        corrmat = self.createCorrMat()
-        topPosCorrsmat = corrmat[corrmat[corrmat < corrMax] > corrMin]
-        xcorr = topPosCorrsmat[col].sort_values(ascending=False).dropna()
+        corrmat = self.createCorrMat(corrType=corrType)
+        topCorrsmat = corrmat[corrmat[corrmat < corrMax] > corrMin]
+        xcorr = topCorrsmat[x].sort_values(ascending=False).dropna()
+        if head != None:
+            return xcorr[:head]
         return xcorr
 
-    def findCorr(cls, df: pd.DataFrame | pd.Series, x: str, corrMin: float | None = 0.5, corrMax: float | None = 1, corrType: str = 'pearson', head: int = 10) -> tuple:
-        '''
-        Find the correlation of the whole dataframe.
-        If you want to analyse as well the string and other types of data,
-        use OneHotEncoder or any other kind of encoder to convert them into numbers
-
-        Return: 
-        - pd.Series: top ? correlation comparing to feature x.
-
-        Args:
-        - x: feature name (column name) as string
-        - corrMin: lower threshold of the correlation choosing range
-        - corrMax: upper bound of the correlation choosing range
-        - corrType: 'pearson','kendall', 'spearman'
-        '''
-        corrmat = cls.createCorrMat(df)
-        topPosCorrsmat = corrmat[corrmat[corrmat < corrMax] > corrMin]
-        xcorr = topPosCorrsmat[x].sort_values(ascending=False).dropna()
-        return xcorr
-
-    def showAllCorr(self, col: str) -> None:
+    def showAllRel(self, col: str) -> None:
         '''
         show all correlation of all other columns comparing to the argument "col"
 
@@ -242,7 +211,7 @@ class DataAnalysis:
         '''
         df = self.getData()
 
-        nums = self.getNumCols(df)
+        nums = self.getNumCols()
         for i in range(0, len(nums.columns), 5):
             sns.pairplot(data=nums,
                          x_vars=nums.columns[i:i+5],
@@ -250,8 +219,14 @@ class DataAnalysis:
 
     def showDistr(self, col: str, kde: bool = True) -> float:
         '''
+        Auxillary method
+
         Show the data distribution on any column of the dataframe
         And return the skewness
+
+        Args:
+        - col: show distribution comparing to this/these column(s)
+        - kde: show kde line or not, default true
         '''
         df = self.getData()
 
@@ -263,9 +238,10 @@ class DataAnalysis:
         '''
         Do transforms on malformed data distribution
 
-        Return: transformed pd.Series , new skewness as float
+        Return: transformed pd.Series, new skewness as float
 
         Args:
+        - col: show distribution comparing to this/these column(s)
         - trans: 'log' for log transformation, 
                 'sqrt' for square root transformation,
                 'boxcox' for box cox transformation
@@ -297,7 +273,8 @@ class DataAnalysis:
 
         Args:
 
-        - cols: only duplicate in certain columns, it will be returned 
+        - subset: only duplicate in certain columns, it will be returned 
+        - inplace: whether replace the original dataframe to the transformed data or not
         '''
         df = self.getData()
 
@@ -308,56 +285,53 @@ class DataAnalysis:
             self.data = df.drop_duplicates(subset=subset)
         return df[df.duplicated(subset=subset)]
 
-    def handleDup(cls, df: pd.DataFrame | pd.Series, subset: str | list | None = None, inplace=False) -> pd.DataFrame:
-        '''
-        Return duplicated rows in certain columns.
-
-        Args:
-
-        - cols: only duplicate in certain columns, it will be returned 
-        '''
-        if subset == None:
-            subset = df.columns
-
-        if inplace:
-            df = df.drop_duplicates(subset=subset)
-        return df[df.duplicated(subset=subset)]
-
-    def showNaN(self, head: int = 20) -> None:
+    def showNaN(self, head: int = 20, how: str = 'precentage') -> None:
         '''
         displaying NaN datas in a histplot
 
         Args:
         - head: top "head" missing values (NaN) amount
+        - how: 'precentage' | 'count'
         '''
         df = self.getData()
         total = df.isnull().sum().sort_values(ascending=False)
         total_select = total.head(head)
-        total_select.plot(kind="bar", figsize=(8, 6), fontsize=10)
-
+        if how == 'precentage':
+            precentage = 100*total_select/len(df)
+            precentage.plot(kind="bar", figsize=(8, 6), fontsize=10)
+            plt.ylabel("Precentage %", fontsize=20)
+            plt.title("Total Missing Values Precentage %", fontsize=20)
+        elif how == 'count':
+            total_select.plot(kind="bar", figsize=(8, 6), fontsize=10)
+            plt.ylabel("Count", fontsize=20)
+            plt.title("Total Missing Values", fontsize=20)
+        else:
+            raise AttributeError(f"Invalid 'how' argument as '{how}'.")
         plt.xlabel("Columns", fontsize=20)
-        plt.ylabel("Count", fontsize=20)
-        plt.title("Total Missing Values", fontsize=20)
 
     def handleNaN(self, subset: str | list, how: str = 'row', inplace: bool = False) -> pd.DataFrame:
         '''
         Handling NaN data.
 
         Args:
+        
+        - subset: handle missing values onto these columns
         - how:  'row': Only drop missing values on certain columns
                 'col' | 'column': drop whole column
                 'median': replace missing values to medians
                 'zero': replace missing values to zeros
                 'mean': replace missing values to means
+        - inplace: whether replace the original dataframe to the transformed data or not
+        
         '''
         df = self.getData()
         dropped = pd.DataFrame()
-        if subset == None:
-            raise TypeError("Please input 'subset' argument when dropping.")
+        # if subset == None:
+        #     raise TypeError("Please input 'subset' argument when dropping.")
         if how == 'row':
             print("Option 1: Only drop missing values on certain columns")
             dropped = df.dropna(subset=subset)
-        elif how == 'col' | 'column':
+        elif how == 'col' or how == 'column':
             print("Option 2: Drop the whole column ")
             dropped = df.drop(subset, axis=1)
         elif how == 'median':
@@ -373,77 +347,238 @@ class DataAnalysis:
             mean = df[subset].mean()
             dropped = df[subset].fillna(mean)
         else:
-            raise AttributeError("'how' argument not given right.")
+            raise AttributeError(f"Invalid 'how' argument as '{how}'.")
         if inplace:
             self._data = dropped
         return dropped
 
-    def handleNaN(cls,df:pd.DataFrame|pd.Series, subset: str | list, how: str = 'row', inplace: bool = False) -> pd.DataFrame:
+    def transformData(self, subset: str | list=None,scaler:str='min-max')->np.ndarray:
         '''
-        Handling NaN data.
+        Feature Scaling step.
+        Uses "getNumCols()" in order to analyse numbers.
+
+        Return: transformed data
 
         Args:
-        - how:  'row': Only drop missing values on certain columns
-                'col' | 'column': drop whole column
-                'median': replace missing values to medians
-                'zero': replace missing values to zeros
-                'mean': replace missing values to means
+        - scaler: 'min-max' as `MinMaxScaler()`; 'standard' as `StandardScaler()`
         '''
-        dropped = pd.DataFrame()
-        if subset == None:
-            raise TypeError("Please input 'subset' argument when dropping.")
-        if how == 'row':
-            print("Option 1: Only drop missing values on certain columns")
-            dropped = df.dropna(subset=subset)
-        elif how == 'col' | 'column':
-            print("Option 2: Drop the whole column ")
-            dropped = df.drop(subset, axis=1)
-        elif how == 'median':
-            print("Option 3: Replace missing values to medians")
-            # dont need to check "subset"'s type
-            median = df[subset].median()
-            dropped = df[subset].fillna(median)
-        elif how == 'zero':
-            print("Option 4: Replace missing values to zeros")
-            dropped = df[subset].fillna(0)
-        elif how == 'mean':
-            print("Option 5: Replace missing values to means")
-            mean = df[subset].mean()
-            dropped = df[subset].fillna(mean)
+        df=self.getData()
+        nums=self.getNumCols(subset=subset) # here will just input subset argument and check, if subset==None
+        if scaler=='min-max':
+            return MinMaxScaler().fit_transform(nums)
+        elif scaler=='standard':
+            return StandardScaler().fit_transform(nums)
         else:
-            raise AttributeError("'how' argument not given right.")
-        if inplace:
-            df=dropped
-        return dropped
-
+            raise AttributeError(f"Invalid 'scaler' argument as '{scaler}'.")
     # main function
-
-    def analyseData(self) -> None:
+    def plotOutliers(self,col:str|list|tuple,plot='boxplot')->None:
         '''
-        Main Tool Function of Machine Learning
+        Auxillary method of `handleOutliers`
+
+        Note that boxplot is for single feature outlier seeking
+        the scatter plot is for bi-variante feature outlier seeking
+        '''
+        df=self.getData()
+        if plot=='boxplot':
+            sns.boxplot(x=df[col])
+        elif plot=='scatter':
+            try:
+                x,y=col
+            except Exception as e:
+                raise TypeError(f"If you choose a bi-variante feature outlier to seek, aka scatter plot, you must pass the `plot` argument as a list or tuple contains at least 2 element. The first and second element will be taken into account as x and y.\nOriginal Error message:{e}")
+            df.plot.scatter(x=x,y=y)
+        else:
+            raise AttributeError(f"Invalid 'plot' argument as '{plot}'.")
+    
+    def delOutliers(self):
+        '''
+        You must do it by yourself
+        
+        Option 1: using df.sort_values() to sort out outlier values you've seen in method `plotOutliers`
+        because there is no standard to decide whether these are outliers or not
+
+        Option 2: using df.drop() to drop the outliers directly with their indices
+        eg: `outliers_dropped = df.drop(df.index[[1499,2181]])`
+        
+        '''
+        pass
+
+    def analyseData(self, col: str | None = None) -> None:
+        '''
+        Main Tool Function of Machine Learning. \n
+        Now only for testing!!!
 
         Args:
-        - df: <code>pd.Dataframe()</code>. Original dataframe.
+        - df: `pd.Dataframe()`
         '''
-        df = self.getData()
+        if col == None:
+            self.dataIntro()
+            self.checkTypes()
+            # self.showAllRel(col=col)
+            self.createCorrMat()
+            # self.findCorr(col=col)
+            # self.showDistr()
+            # self.fixDistr()
+            self.handleDup()
+            self.showNaN()
+            # self.handleNaN()
+            print("scaled data:", self.transformData())
+        else:
+            self.dataIntro()
+            self.checkTypes()
+            self.showAllRel(col=col)
+            self.createCorrMat()
+            self.findCorr(col=col)
+            self.fixDistr(col=col)
+            self.handleDup()
+            self.showNaN()
+            self.handleNaN(subset=col)
 
-        self.dataIntro(df)
-        self.checkTypes(df)
-        self.findCorr(df)
-        self.handleNaN(df)
+# --------------------------------------------------------------------------------------------------------------'''
+# Class funcs
+    # def dataIntro(cls, df: pd.DataFrame | pd.Series) -> None:
+    #     '''
+    #     Print all data information and description.
+    #     Class method
+    #     '''
+    #     df = dfChecker(df)
+    #     separator()
+    #     print("Basic Information of dataframe")
+    #     separator()
+    #     df.info()
+    #     spacer()
+    #     print(df.describe())
+    #     separator()
+    #     print("end dataIntro")
+    #     separator()
 
-    def analyseData(cls, df: pd.DataFrame | pd.Series | None = ...) -> None:
-        '''
-        Main Tool Function of Machine Learning
+    # def checkTypes(cls, df: pd.DataFrame | pd.Series) -> None:
+    #     '''
+    #     Analyse the types of the given dataframe.
+    #     '''
+    #     df = dfChecker(df)
 
-        Args:
-        - df: <code>pd.Dataframe()</code>. Original dataframe.
-        '''
-        dfChecker(df)
-        cls.dataIntro(df)
-        cls.checkTypes(df)
-        cls.findCorr(df)
-        cls.handleNaN(df)
+    #     typelist = df.dtypes.unique()
+    #     typestr = str(list(typelist)).strip('[]')
+    #     print(f"{len(typelist)} types in this dataframe:")
+    #     print("You can see more detailed information with df.info(), which is already displayed before.")
+    #     print(typestr)
+
+    # def analyseData(cls, df: pd.DataFrame | pd.Series | None = ...) -> None:
+    #     '''
+    #     Main Tool Function of Machine Learning
+
+    #     Args:
+    #     - df: `pd.Dataframe()`. Original dataframe.
+    #     '''
+    #     df = dfChecker(df)
+
+    #     cls.dataIntro(df)
+    #     cls.checkTypes(df)
+    #     cls.findCorr(df)
+    #     cls.handleNaN(df)
+
+    # def createCorrMat(cls, df: pd.DataFrame | pd.Series, corrType: str = 'pearson') -> pd.DataFrame:
+    #     '''
+    #     Auxillary method
+
+    #     Return: corrmat (pd.Dataframe)
+    #     Args:
+    #     - corrType: 'pearson','kendall', 'spearman'
+    #     '''
+    #     df = dfChecker(df)
+
+    #     # only analyse numbers
+    #     nums = cls.getNumCols(df)
+    #     corrmat = nums.corr(method=corrType)
+    #     return corrmat
+
+    # def getNumCols(cls, df: pd.DataFrame | pd.Series) -> pd.DataFrame:
+    #     '''
+    #     Auxillary method
+    #     '''
+    #     df = dfChecker(df)
+
+    #     return df.select_dtypes(include=['float64', 'int64'])
+
+    # def findCorr(cls, df: pd.DataFrame | pd.Series, x: str, corrMin: float | None = 0.5, corrMax: float | None = 1, corrType: str = 'pearson', head: int = 10) -> tuple:
+    #     '''
+    #     Find the correlation of the whole dataframe.
+    #     If you want to analyse as well the string and other types of data,
+    #     use OneHotEncoder or any other kind of encoder to convert them into numbers
+
+    #     Return:
+    #     - pd.Series: top ? correlation comparing to feature x.
+
+    #     Args:
+    #     - x: feature name (column name) as string
+    #     - corrMin: lower threshold of the correlation choosing range
+    #     - corrMax: upper bound of the correlation choosing range
+    #     - corrType: 'pearson','kendall', 'spearman'
+    #     '''
+    #     df = dfChecker(df)
+
+    #     corrmat = cls.createCorrMat(df, corrType=corrType)
+    #     topPosCorrsmat = corrmat[corrmat[corrmat < corrMax] > corrMin]
+    #     xcorr = topPosCorrsmat[x].sort_values(ascending=False).dropna()
+    #     return xcorr
+
+    # def handleDup(cls, df: pd.DataFrame | pd.Series, subset: str | list | None = None, inplace=False) -> pd.DataFrame:
+    #     '''
+    #     Return duplicated rows in certain columns.
+
+    #     Args:
+
+    #     - cols: only duplicate in certain columns, it will be returned
+    #     '''
+    #     df = dfChecker(df)
+
+    #     if subset == None:
+    #         subset = df.columns
+
+    #     if inplace:
+    #         df = df.drop_duplicates(subset=subset)
+    #     return df[df.duplicated(subset=subset)]
+
+    # def handleNaN(cls, df: pd.DataFrame | pd.Series, subset: str | list, how: str = 'row', inplace: bool = False) -> pd.DataFrame:
+    #     '''
+    #     Handling NaN data.
+
+    #     Args:
+    #     - how:  'row': Only drop missing values on certain columns
+    #             'col' | 'column': drop whole column
+    #             'median': replace missing values to medians
+    #             'zero': replace missing values to zeros
+    #             'mean': replace missing values to means
+    #     '''
+    #     df = dfChecker(df)
+
+    #     dropped = pd.DataFrame()
+    #     if subset == None:
+    #         raise TypeError("Please input 'subset' argument when dropping.")
+    #     if how == 'row':
+    #         print("Option 1: Only drop missing values on certain columns")
+    #         dropped = df.dropna(subset=subset)
+    #     elif how == 'col' | 'column':
+    #         print("Option 2: Drop the whole column ")
+    #         dropped = df.drop(subset, axis=1)
+    #     elif how == 'median':
+    #         print("Option 3: Replace missing values to medians")
+    #         # dont need to check "subset"'s type
+    #         median = df[subset].median()
+    #         dropped = df[subset].fillna(median)
+    #     elif how == 'zero':
+    #         print("Option 4: Replace missing values to zeros")
+    #         dropped = df[subset].fillna(0)
+    #     elif how == 'mean':
+    #         print("Option 5: Replace missing values to means")
+    #         mean = df[subset].mean()
+    #         dropped = df[subset].fillna(mean)
+    #     else:
+    #         raise AttributeError("'how' argument not given right.")
+    #     if inplace:
+    #         df = dropped
+    #     return dropped
 
 
 if __name__ == "__main__":
