@@ -371,38 +371,75 @@ class DataAnalysis:
         else:
             raise AttributeError(f"Invalid 'scaler' argument as '{scaler}'.")
     # main function
-    def plotOutliers(self,col:str|list|tuple,plot='boxplot')->None:
+    def plotOutliers(self,col:str|list|tuple,zscore=True)->pd.DataFrame|None:
         '''
-        Auxillary method of `handleOutliers`
+        Auxillary method of `delOutliers`
 
         Note that boxplot is for single feature outlier seeking
         the scatter plot is for bi-variante feature outlier seeking
+
+        z-score mathematically identifies outliers.
+
+        if z-score turned on, it returns zstats dataframe.
         '''
         df=self.getData()
-        if plot=='boxplot':
+        # x,y,*=col
+        if type(col)==str:
             sns.boxplot(x=df[col])
-        elif plot=='scatter':
+        else:  
             try:
                 x,y=col
             except Exception as e:
-                raise TypeError(f"If you choose a bi-variante feature outlier to seek, aka scatter plot, you must pass the `plot` argument as a list or tuple contains at least 2 element. The first and second element will be taken into account as x and y.\nOriginal Error message:{e}")
+                raise TypeError(f"If you choose a bi-variante feature outlier to seek, aka scatter plot, you must pass the `plot` argument as a list or tuple contains EXACT 2 element.\nOriginal Error message:{e}")
             df.plot.scatter(x=x,y=y)
-        else:
-            raise AttributeError(f"Invalid 'plot' argument as '{plot}'.")
-    
-    def delOutliers(self):
-        '''
-        You must do it by yourself
+        if zscore:
+            print("Here is the Z-score stats of column",col)
+            zstats=stats.zscore(df[col])
+            print(zstats.describe().round(2))
+            zmin,zmax=zstats.min(),zstats.max()
+            print("If z-score (above shown) fulfills: zscore<-3||zscore>3, then it will be identified as a outlier\n")
+            try:
+                if (zmin>3) or (zmin<-3):
+                    print(f"Outliers found: zmin={zmin} (greater than 3 or less than -3). Please check the plot manuelly.")
+                    print()
+                elif (zmax>3) or (zmax<-3):
+                    print(f"Outliers found: zmax={zmax} (greater than 3 or less than -3). Please check the plot manuelly.")
+                else:
+                    print("No Z-score Outliers found.")
+            except ValueError as e:
+                raise ValueError(f"For z-score outlier analysis, you should only input string as `col` argument, instead of {type(col)}\nOriginal Error message:{e}")
+            return zstats
         
-        Option 1: using df.sort_values() to sort out outlier values you've seen in method `plotOutliers`
-        because there is no standard to decide whether these are outliers or not
+    def delOutliers(self,col:str,how='sort',ascending:bool=False,inplace:bool=False)->pd.DataFrame|str:
+        '''
+        Delete Outliers, but it should be highly customed.
 
-        Option 2: using df.drop() to drop the outliers directly with their indices
+        Return: only sort_values result for `pd.DataFrame`
+
+        How to use:
+        `da.delOutliers(col=COL_NAME).drop(df.index[[OUTLIER_INDICES]]])`
+
+        Details:
+        1. First using df.sort_values() to sort out outlier values you've seen in method `plotOutliers`
+        because there is no standard to decide whether these are outliers or not
+        
+
+        2. Then using df.drop() to drop the outliers directly with their indices
         eg: `outliers_dropped = df.drop(df.index[[1499,2181]])`
         
+        Note that Option 1 only supports str parameter, instead of passing a list
         '''
-        pass
 
+        df=self.getData()
+        # zstats=self.plotOutliers(col=col)
+        if how=='sort':
+            _sorted=df.sort_values(by=col,ascending=ascending)
+            print("Now the dataframe has sorted. Find out the outliers by index and drop them yourself!")
+        else:
+            raise AttributeError(f"Invalid 'how' argument as '{how}'.")
+        if inplace:
+            self._data=_sorted
+        return _sorted
     def analyseData(self, col: str | None = None) -> None:
         '''
         Main Tool Function of Machine Learning. \n
