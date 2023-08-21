@@ -7,7 +7,9 @@ import seaborn as sns
 from functools import wraps
 from scipy import stats
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
-
+# --------------------------------------------------------------------------------------------------------------'''
+import plotly.express as px
+from plotly.graph_objects import Figure
 
 def trace(func: object) -> object:
     '''
@@ -100,13 +102,14 @@ def dfChecker(df: pd.DataFrame | pd.Series) -> pd.DataFrame:
             {e}
             ''')
     return df
-
+        
 @trace
 class DataAnalysis:
     def __init__(self, df: pd.DataFrame | pd.Series) -> None:
         # print("Start initializing instance...")
         self._data = dfChecker(df)
-
+# --------------------------------------------------------------------------------------------------------------
+# Data Cleaning
     def getData(self) -> pd.DataFrame:
         '''
         Get the current dataframe.
@@ -411,6 +414,7 @@ class DataAnalysis:
             return zstats
         
     def delOutliers(self,col:str,how='sort',ascending:bool=False,inplace:bool=False)->pd.DataFrame|str:
+
         '''
         Delete Outliers, but it should be highly customed.
 
@@ -440,6 +444,7 @@ class DataAnalysis:
         if inplace:
             self._data=_sorted
         return _sorted
+    
     def analyseData(self, col: str | None = None) -> None:
         '''
         Main Tool Function of Machine Learning. \n
@@ -471,152 +476,78 @@ class DataAnalysis:
             self.showNaN()
             self.handleNaN(subset=col)
 
-# --------------------------------------------------------------------------------------------------------------'''
-# Class funcs
-    # def dataIntro(cls, df: pd.DataFrame | pd.Series) -> None:
-    #     '''
-    #     Print all data information and description.
-    #     Class method
-    #     '''
-    #     df = dfChecker(df)
-    #     separator()
-    #     print("Basic Information of dataframe")
-    #     separator()
-    #     df.info()
-    #     spacer()
-    #     print(df.describe())
-    #     separator()
-    #     print("end dataIntro")
-    #     separator()
+# --------------------------------------------------------------------------------------------------------------
+# Exploratory Data Analysis
+    def isin(self,subset:str|list,isin:list|tuple)->pd.DataFrame:
+        '''
+        Find out if some catagorical elements is in certain list of elements
+        
+        ```
+        cities = ['Calgary', 'Toronto', 'Edmonton']
+        CTE = data[data.City.isin(cities)]
+        CTE
+        ```
 
-    # def checkTypes(cls, df: pd.DataFrame | pd.Series) -> None:
-    #     '''
-    #     Analyse the types of the given dataframe.
-    #     '''
-    #     df = dfChecker(df)
+        '''
+        df=self.getData()
+        return df[df[subset].isin(isin)]
+    
+    def grouping(self,groupbySubset:str|list,cols:str|list,method:str='mean',reset_index:bool|None=None,sort_values:bool|None=None)->pd.DataFrame:
+        '''
+        Grouping categorical methods.
+        ```
+        grouper = df.groupby(['Year', 'City'])['VALUE'].median()
+        ```
+        It returns a `pd.Series`.
 
-    #     typelist = df.dtypes.unique()
-    #     typestr = str(list(typelist)).strip('[]')
-    #     print(f"{len(typelist)} types in this dataframe:")
-    #     print("You can see more detailed information with df.info(), which is already displayed before.")
-    #     print(typestr)
+        Args:
+        - groupbySubset: Categorical features/columns who needs to be grouped
+        - col: Any other columns who needs to be added
+        - method: 'mean','max','median',...
+        - reset_index: use reset_index to convert grouping `pd.Series` into `pd.DataFrame`
+        
 
-    # def analyseData(cls, df: pd.DataFrame | pd.Series | None = ...) -> None:
-    #     '''
-    #     Main Tool Function of Machine Learning
+        How to use:
+        ```da.grouping(['Year','City'],col='VALUE',method='max')```
+        '''
+        df=self.getData()
+        comm=f"df.groupby(groupbySubset)[cols].{method}()"
+        print(comm)
+        try:
+            return eval(comm)
+        except Exception as e:
+            raise AttributeError(f"Error Occurs. Try to set argument 'cols' into single column name as string.\nOriginal Error message:{e}")
+    
+    def plot(self,x:str,y:str,z:str=None,df:pd.DataFrame|None=None,figType:str|None='line',animationFrame:str|None=None,updateTracesMode:str='markers+lines',title:str='',colorDiscreteSequence=px.colors.qualitative.Light24)->Figure:
+        '''
+        Auxillary
 
-    #     Args:
-    #     - df: `pd.Dataframe()`. Original dataframe.
-    #     '''
-    #     df = dfChecker(df)
+        Args:
+        - x: x axis element
+        - y: y axis element
+        - zcolor: z axis for 3rd dimentional element displayed as multiple color
+        - df: normally it could be with categorical columns
+        - figType: 'line', 'bar', ... used as px.figType()
+        
+        '''
+        if df==None:
+            df=self.getData()
+        if title=='':
+            title='An automatically created plot about '+x+' and '+y
+        if z == None:
+            fig = eval(f"px.{figType}(df,x=x, y = y, color_discrete_sequence=colorDiscreteSequence,animation_frame=animationFrame")
+        
+        else:
+            fig = eval(f"px.{figType}(df,x=x, y = y, color =z, color_discrete_sequence=colorDiscreteSequence,animation_frame=animationFrame")
 
-    #     cls.dataIntro(df)
-    #     cls.checkTypes(df)
-    #     cls.findCorr(df)
-    #     cls.handleNaN(df)
-
-    # def createCorrMat(cls, df: pd.DataFrame | pd.Series, corrType: str = 'pearson') -> pd.DataFrame:
-    #     '''
-    #     Auxillary method
-
-    #     Return: corrmat (pd.Dataframe)
-    #     Args:
-    #     - corrType: 'pearson','kendall', 'spearman'
-    #     '''
-    #     df = dfChecker(df)
-
-    #     # only analyse numbers
-    #     nums = cls.getNumCols(df)
-    #     corrmat = nums.corr(method=corrType)
-    #     return corrmat
-
-    # def getNumCols(cls, df: pd.DataFrame | pd.Series) -> pd.DataFrame:
-    #     '''
-    #     Auxillary method
-    #     '''
-    #     df = dfChecker(df)
-
-    #     return df.select_dtypes(include=['float64', 'int64'])
-
-    # def findCorr(cls, df: pd.DataFrame | pd.Series, x: str, corrMin: float | None = 0.5, corrMax: float | None = 1, corrType: str = 'pearson', head: int = 10) -> tuple:
-    #     '''
-    #     Find the correlation of the whole dataframe.
-    #     If you want to analyse as well the string and other types of data,
-    #     use OneHotEncoder or any other kind of encoder to convert them into numbers
-
-    #     Return:
-    #     - pd.Series: top ? correlation comparing to feature x.
-
-    #     Args:
-    #     - x: feature name (column name) as string
-    #     - corrMin: lower threshold of the correlation choosing range
-    #     - corrMax: upper bound of the correlation choosing range
-    #     - corrType: 'pearson','kendall', 'spearman'
-    #     '''
-    #     df = dfChecker(df)
-
-    #     corrmat = cls.createCorrMat(df, corrType=corrType)
-    #     topPosCorrsmat = corrmat[corrmat[corrmat < corrMax] > corrMin]
-    #     xcorr = topPosCorrsmat[x].sort_values(ascending=False).dropna()
-    #     return xcorr
-
-    # def handleDup(cls, df: pd.DataFrame | pd.Series, subset: str | list | None = None, inplace=False) -> pd.DataFrame:
-    #     '''
-    #     Return duplicated rows in certain columns.
-
-    #     Args:
-
-    #     - cols: only duplicate in certain columns, it will be returned
-    #     '''
-    #     df = dfChecker(df)
-
-    #     if subset == None:
-    #         subset = df.columns
-
-    #     if inplace:
-    #         df = df.drop_duplicates(subset=subset)
-    #     return df[df.duplicated(subset=subset)]
-
-    # def handleNaN(cls, df: pd.DataFrame | pd.Series, subset: str | list, how: str = 'row', inplace: bool = False) -> pd.DataFrame:
-    #     '''
-    #     Handling NaN data.
-
-    #     Args:
-    #     - how:  'row': Only drop missing values on certain columns
-    #             'col' | 'column': drop whole column
-    #             'median': replace missing values to medians
-    #             'zero': replace missing values to zeros
-    #             'mean': replace missing values to means
-    #     '''
-    #     df = dfChecker(df)
-
-    #     dropped = pd.DataFrame()
-    #     if subset == None:
-    #         raise TypeError("Please input 'subset' argument when dropping.")
-    #     if how == 'row':
-    #         print("Option 1: Only drop missing values on certain columns")
-    #         dropped = df.dropna(subset=subset)
-    #     elif how == 'col' | 'column':
-    #         print("Option 2: Drop the whole column ")
-    #         dropped = df.drop(subset, axis=1)
-    #     elif how == 'median':
-    #         print("Option 3: Replace missing values to medians")
-    #         # dont need to check "subset"'s type
-    #         median = df[subset].median()
-    #         dropped = df[subset].fillna(median)
-    #     elif how == 'zero':
-    #         print("Option 4: Replace missing values to zeros")
-    #         dropped = df[subset].fillna(0)
-    #     elif how == 'mean':
-    #         print("Option 5: Replace missing values to means")
-    #         mean = df[subset].mean()
-    #         dropped = df[subset].fillna(mean)
-    #     else:
-    #         raise AttributeError("'how' argument not given right.")
-    #     if inplace:
-    #         df = dropped
-    #     return dropped
-
-
+        fig.update_traces(mode=updateTracesMode)
+        fig.update_layout(
+            title=title,
+            xaxis_title=x,
+            yaxis_title=y)
+        fig.show()
+        return fig
+    
+    
 if __name__ == "__main__":
     pass

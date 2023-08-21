@@ -1,3 +1,42 @@
+from threading import Event,Thread
+from functools import wraps
+import time
+
+def trace(func: object) -> object:
+    '''
+    Decorater that traces a function.
+
+    Args:
+    - func: Function that needs to be traced
+
+    How To Use:
+
+    @trace # with decorator sign @
+    def func(ARGS,KWARGS): # first define the function
+        ...
+    func(ARGS,KWARGS) # then call the function
+
+    '''
+    debug_log = sys.stderr  # Note that: originally, it is a global variable
+    if debug_log:
+        def callf(*args, **kwargs):
+            """
+            Private
+
+            A wrapper function.
+
+            Args:
+            *args: unused parameters without arguments' names
+            *kwargs: unused parameters with arguments' names
+            """
+            debug_log.write('Calling function: {}\n'.format(func.__name__))
+            res = func(*args, **kwargs)
+            debug_log.write('Return value: {}\n'.format(res))
+            return res
+        return callf
+    else:
+        return func
+
 class Timer:
     '''
     All timer methodes in 1.\n
