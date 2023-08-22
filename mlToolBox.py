@@ -6,10 +6,13 @@ import matplotlib.pylab as plt
 import seaborn as sns
 from functools import wraps
 from scipy import stats
-from sklearn.preprocessing import MinMaxScaler, StandardScaler
+from sklearn.preprocessing import MinMaxScaler, StandardScaler, OneHotEncoder, LabelEncoder
 # --------------------------------------------------------------------------------------------------------------'''
 import plotly.express as px
 from plotly.graph_objects import Figure
+# --------------------------------------------------------------------------------------------------------------'''
+from sklearn.decomposition import PCA
+
 
 def trace(func: object) -> object:
     '''
@@ -102,34 +105,37 @@ def dfChecker(df: pd.DataFrame | pd.Series) -> pd.DataFrame:
             {e}
             ''')
     return df
-        
+
+
 @trace
 class DataAnalysis:
     def __init__(self, df: pd.DataFrame | pd.Series) -> None:
         # print("Start initializing instance...")
         self._data = dfChecker(df)
 # --------------------------------------------------------------------------------------------------------------
-# Data Cleaning
+
+    def __str__(self) -> str:
+        return self.getData().to_string()
+# Tool methods
+
     def getData(self) -> pd.DataFrame:
         '''
         Get the current dataframe.
         '''
         return self._data
 
-    def dataIntro(self) -> None:
-        '''
-        Print all data information and description of current dataframe.
-        '''
-        df = self.getData()
-        separator()
-        print("Basic Information of dataframe")
-        separator()
-        df.info()
-        spacer()
-        print(df.describe())
-        separator()
-        print("end dataIntro")
-        separator()
+    def update(self, df: pd.DataFrame | pd.Series) -> None:
+        self._data = df
+
+    def diff(self, df: pd.DataFrame | pd.Series) -> None:
+        '''Compare old and new dataframe'''
+        return self.getData().compare(df)
+
+    def unique(self, obj: object | None = None) -> list:
+        if obj == None:
+            df = self.getData()
+            return df.unique().tolist()
+        return obj.unique().tolist()
 
     def checkTypes(self) -> None:
         '''
@@ -149,7 +155,55 @@ class DataAnalysis:
         print("You can see more detailed information with df.info(), which is already displayed before.")
         print(typestr)
 
-    def getNumCols(self,subset:str|list=None) -> pd.DataFrame:
+    def isin(self, subset: str | list, isin: list | tuple) -> pd.DataFrame:
+        '''
+        Find out if some catagorical elements is in certain list of elements
+
+        ```
+        cities = ['Calgary', 'Toronto', 'Edmonton']
+        CTE = data[data.City.isin(cities)]
+        CTE
+        ```
+
+        '''
+        df = self.getData()
+        return df[df[subset].isin(isin)]
+
+    def combine(self, new: pd.DataFrame | pd.Series, old: pd.DataFrame | pd.Series | None = None, inplace: bool = False) -> pd.DataFrame | pd.Series:
+        print("Building...")
+        return
+
+    def find(self, v: object, axis: int | str = 0):
+        if axis == 0 or axis == "row":
+            ...
+        elif axis == 1 or axis == "col" or axis == "column":
+            ...
+        else:
+            ...
+
+    def countTrue(self, s: pd.Series | None = None) -> int:
+        if s == None:
+            s = self.getData()
+        return s.sum()
+# --------------------------------------------------------------------------------------------------------------
+# Data Cleaning
+
+    def dataIntro(self) -> None:
+        '''
+        Print all data information and description of current dataframe.
+        '''
+        df = self.getData()
+        separator()
+        print("Basic Information of dataframe")
+        separator()
+        df.info()
+        spacer()
+        print(df.describe())
+        separator()
+        print("end dataIntro")
+        separator()
+
+    def getNumCols(self, subset: str | list = None) -> pd.DataFrame:
         '''
         Auxillary method
 
@@ -158,11 +212,11 @@ class DataAnalysis:
         Args:
         - subset: if you want to return a part of columns and only contain numbers, use `subset` to input the wanted dataframe
         `da.getNumCols(subset=['col1','col2',...]])`
-        
+
         '''
-        df=self.getData()
-        if subset==None:
-            subset=df.columns
+        df = self.getData()
+        if subset == None:
+            subset = df.columns
         return df.select_dtypes(include=['float64', 'int64'])
 
     def createCorrMat(self, corrType: str = 'pearson') -> pd.DataFrame:
@@ -288,6 +342,17 @@ class DataAnalysis:
             self.data = df.drop_duplicates(subset=subset)
         return df[df.duplicated(subset=subset)]
 
+    def getNaN(self) -> pd.Series:
+        '''
+        Auxillary method for self.showNaN()
+
+        Args:
+        None
+
+        '''
+        df = self.getData()
+        return df.isnull().sum()
+
     def showNaN(self, head: int = 20, how: str = 'precentage') -> None:
         '''
         displaying NaN datas in a histplot
@@ -297,7 +362,7 @@ class DataAnalysis:
         - how: 'precentage' | 'count'
         '''
         df = self.getData()
-        total = df.isnull().sum().sort_values(ascending=False)
+        total = self.getNaN().sort_values(ascending=False)
         total_select = total.head(head)
         if how == 'precentage':
             precentage = 100*total_select/len(df)
@@ -317,15 +382,16 @@ class DataAnalysis:
         Handling NaN data.
 
         Args:
-        
+
         - subset: handle missing values onto these columns
         - how:  'row': Only drop missing values on certain columns
                 'col' | 'column': drop whole column
                 'median': replace missing values to medians
                 'zero': replace missing values to zeros
                 'mean': replace missing values to means
+                'ffill': which fills the last observed non-null value forward until another non-null value is encountered.
         - inplace: whether replace the original dataframe to the transformed data or not
-        
+
         '''
         df = self.getData()
         dropped = pd.DataFrame()
@@ -349,13 +415,16 @@ class DataAnalysis:
             print("Option 5: Replace missing values to means")
             mean = df[subset].mean()
             dropped = df[subset].fillna(mean)
+        elif how == 'ffill':
+            print("Option 6: Fills the last observed non-null value forward")
+            dropped = df.fillna(method='ffill')
         else:
             raise AttributeError(f"Invalid 'how' argument as '{how}'.")
         if inplace:
             self._data = dropped
         return dropped
 
-    def transformData(self, subset: str | list=None,scaler:str='min-max')->np.ndarray:
+    def transformData(self, subset: str | list = None, scaler: str = 'min-max') -> np.ndarray:
         '''
         Feature Scaling step.
         Uses "getNumCols()" in order to analyse numbers.
@@ -365,16 +434,18 @@ class DataAnalysis:
         Args:
         - scaler: 'min-max' as `MinMaxScaler()`; 'standard' as `StandardScaler()`
         '''
-        df=self.getData()
-        nums=self.getNumCols(subset=subset) # here will just input subset argument and check, if subset==None
-        if scaler=='min-max':
+        df = self.getData()
+        # here will just input subset argument and check, if subset==None
+        nums = self.getNumCols(subset=subset)
+        if scaler == 'min-max':
             return MinMaxScaler().fit_transform(nums)
-        elif scaler=='standard':
+        elif scaler == 'standard':
             return StandardScaler().fit_transform(nums)
         else:
             raise AttributeError(f"Invalid 'scaler' argument as '{scaler}'.")
     # main function
-    def plotOutliers(self,col:str|list|tuple,zscore=True)->pd.DataFrame|None:
+
+    def plotOutliers(self, col: str | list | tuple, zscore=True) -> pd.DataFrame | None:
         '''
         Auxillary method of `delOutliers`
 
@@ -385,36 +456,39 @@ class DataAnalysis:
 
         if z-score turned on, it returns zstats dataframe.
         '''
-        df=self.getData()
+        df = self.getData()
         # x,y,*=col
-        if type(col)==str:
+        if type(col) == str:
             sns.boxplot(x=df[col])
-        else:  
+        else:
             try:
-                x,y=col
+                x, y = col
             except Exception as e:
-                raise TypeError(f"If you choose a bi-variante feature outlier to seek, aka scatter plot, you must pass the `plot` argument as a list or tuple contains EXACT 2 element.\nOriginal Error message:{e}")
-            df.plot.scatter(x=x,y=y)
+                raise TypeError(
+                    f"If you choose a bi-variante feature outlier to seek, aka scatter plot, you must pass the `plot` argument as a list or tuple contains EXACT 2 element.\nOriginal Error message:{e}")
+            df.plot.scatter(x=x, y=y)
         if zscore:
-            print("Here is the Z-score stats of column",col)
-            zstats=stats.zscore(df[col])
+            print("Here is the Z-score stats of column", col)
+            zstats = stats.zscore(df[col])
             print(zstats.describe().round(2))
-            zmin,zmax=zstats.min(),zstats.max()
+            zmin, zmax = zstats.min(), zstats.max()
             print("If z-score (above shown) fulfills: zscore<-3||zscore>3, then it will be identified as a outlier\n")
             try:
-                if (zmin>3) or (zmin<-3):
-                    print(f"Outliers found: zmin={zmin} (greater than 3 or less than -3). Please check the plot manuelly.")
+                if (zmin > 3) or (zmin < -3):
+                    print(
+                        f"Outliers found: zmin={zmin} (greater than 3 or less than -3). Please check the plot manuelly.")
                     print()
-                elif (zmax>3) or (zmax<-3):
-                    print(f"Outliers found: zmax={zmax} (greater than 3 or less than -3). Please check the plot manuelly.")
+                elif (zmax > 3) or (zmax < -3):
+                    print(
+                        f"Outliers found: zmax={zmax} (greater than 3 or less than -3). Please check the plot manuelly.")
                 else:
                     print("No Z-score Outliers found.")
             except ValueError as e:
-                raise ValueError(f"For z-score outlier analysis, you should only input string as `col` argument, instead of {type(col)}\nOriginal Error message:{e}")
+                raise ValueError(
+                    f"For z-score outlier analysis, you should only input string as `col` argument, instead of {type(col)}\nOriginal Error message:{e}")
             return zstats
-        
-    def delOutliers(self,col:str,how='sort',ascending:bool=False,inplace:bool=False)->pd.DataFrame|str:
 
+    def delOutliers(self, col: str, how='sort', ascending: bool = False, inplace: bool = False) -> pd.DataFrame | str:
         '''
         Delete Outliers, but it should be highly customed.
 
@@ -426,25 +500,26 @@ class DataAnalysis:
         Details:
         1. First using df.sort_values() to sort out outlier values you've seen in method `plotOutliers`
         because there is no standard to decide whether these are outliers or not
-        
+
 
         2. Then using df.drop() to drop the outliers directly with their indices
         eg: `outliers_dropped = df.drop(df.index[[1499,2181]])`
-        
+
         Note that Option 1 only supports str parameter, instead of passing a list
         '''
 
-        df=self.getData()
+        df = self.getData()
         # zstats=self.plotOutliers(col=col)
-        if how=='sort':
-            _sorted=df.sort_values(by=col,ascending=ascending)
-            print("Now the dataframe has sorted. Find out the outliers by index and drop them yourself!")
+        if how == 'sort':
+            _sorted = df.sort_values(by=col, ascending=ascending)
+            print(
+                "Now the dataframe has sorted. Find out the outliers by index and drop them yourself!")
         else:
             raise AttributeError(f"Invalid 'how' argument as '{how}'.")
         if inplace:
-            self._data=_sorted
+            self._data = _sorted
         return _sorted
-    
+
     def analyseData(self, col: str | None = None) -> None:
         '''
         Main Tool Function of Machine Learning. \n
@@ -478,21 +553,8 @@ class DataAnalysis:
 
 # --------------------------------------------------------------------------------------------------------------
 # Exploratory Data Analysis
-    def isin(self,subset:str|list,isin:list|tuple)->pd.DataFrame:
-        '''
-        Find out if some catagorical elements is in certain list of elements
-        
-        ```
-        cities = ['Calgary', 'Toronto', 'Edmonton']
-        CTE = data[data.City.isin(cities)]
-        CTE
-        ```
 
-        '''
-        df=self.getData()
-        return df[df[subset].isin(isin)]
-    
-    def grouping(self,groupbySubset:str|list,cols:str|list,method:str='mean',reset_index:bool|None=None,sort_values:bool|None=None)->pd.DataFrame:
+    def grouping(self, groupbySubset: str | list, cols: str | list, method: str = 'mean', reset_index: bool | None = None, sort_values: bool | None = None) -> pd.DataFrame:
         '''
         Grouping categorical methods.
         ```
@@ -505,22 +567,41 @@ class DataAnalysis:
         - col: Any other columns who needs to be added
         - method: 'mean','max','median',...
         - reset_index: use reset_index to convert grouping `pd.Series` into `pd.DataFrame`
-        
+
 
         How to use:
         ```da.grouping(['Year','City'],col='VALUE',method='max')```
         '''
-        df=self.getData()
-        comm=f"df.groupby(groupbySubset)[cols].{method}()"
+        df = self.getData()
+        comm = f"df.groupby(groupbySubset)[cols].{method}()"
         print(comm)
         try:
             return eval(comm)
         except Exception as e:
-            raise AttributeError(f"Error Occurs. Try to set argument 'cols' into single column name as string.\nOriginal Error message:{e}")
-    
-    def plot(self,x:str,y:str,z:str=None,df:pd.DataFrame|None=None,figType:str|None='line',animationFrame:str|None=None,updateTracesMode:str='markers+lines',title:str='',colorDiscreteSequence=px.colors.qualitative.Light24)->Figure:
+            raise AttributeError(
+                f"Error Occurs. Try to set argument 'cols' into single column name as string.\nOriginal Error message:{e}")
+
+    def plot(self, x: str, y: str, z: str = None, df: pd.DataFrame | None = None, figType: str | None = 'line', animationFrame: str | None = None, updateTracesMode: str = 'markers+lines', title: str = '', colorDiscreteSequence=px.colors.qualitative.Light24) -> Figure:
         '''
         Auxillary
+
+        Return: `px.object_graphs.Figure` which can be called by methods like fig.update_layout(), fig.update_geos()
+        Sample Code
+        ```
+        fig.update_layout(
+        showlegend=True,
+        legend_title_text='<b>Average Gasoline Price</b>',
+        font={"size": 16, "color": "#808080", "family" : "calibri"},
+        margin={"r":0,"t":40,"l":0,"b":0},
+        legend=dict(orientation='v'),
+        geo=dict(bgcolor='rgba(0,0,0,0)', lakecolor='#e0fffe')
+        )
+
+        #Show Canada only 
+        fig.update_geos(showcountries=False, showcoastlines=False,
+                showland=False, fitbounds="locations",
+                subunitcolor='white')
+        ```
 
         Args:
         - x: x axis element
@@ -528,17 +609,19 @@ class DataAnalysis:
         - zcolor: z axis for 3rd dimentional element displayed as multiple color
         - df: normally it could be with categorical columns
         - figType: 'line', 'bar', ... used as px.figType()
-        
+
         '''
-        if df==None:
-            df=self.getData()
-        if title=='':
-            title='An automatically created plot about '+x+' and '+y
+        if df == None:
+            df = self.getData()
+        if title == '':
+            title = 'An automatically created plot about '+x+' and '+y
         if z == None:
-            fig = eval(f"px.{figType}(df,x=x, y = y, color_discrete_sequence=colorDiscreteSequence,animation_frame=animationFrame")
-        
+            fig = eval(
+                f"px.{figType}(df,x=x, y = y, color_discrete_sequence=colorDiscreteSequence,animation_frame=animationFrame")
+
         else:
-            fig = eval(f"px.{figType}(df,x=x, y = y, color =z, color_discrete_sequence=colorDiscreteSequence,animation_frame=animationFrame")
+            fig = eval(
+                f"px.{figType}(df,x=x, y = y, color =z, color_discrete_sequence=colorDiscreteSequence,animation_frame=animationFrame")
 
         fig.update_traces(mode=updateTracesMode)
         fig.update_layout(
@@ -547,7 +630,52 @@ class DataAnalysis:
             yaxis_title=y)
         fig.show()
         return fig
-    
-    
+
+    def combineSimilarCols(self, col: str, oldName: str, newName: str, axis: int | str = 1, inplace: bool = False) -> pd.Series:
+        '''
+        Combine rows or columns that has the same meaning
+
+        Sample code:
+        ```
+        data['Airline'] = np.where(data['Airline']=='Vistara Premium economy', 'Vistara', data['Airline'])
+        ```
+        '''
+        df = self.getData()
+        df[col] = np.where(df[col] == oldName, newName, df[col])
+        if inplace:
+            self.update(df)
+        return df[col]
+
+    def encode(self, subset: str | list, method: str = 'dummy', inplace: bool = False) -> pd.Series | np.ndarray:
+        '''
+        Encode categorical features.
+
+        Args:
+        - subset: categorical feature cols
+        - method: 'dummy','OneHotEncoder','LabelEncoder','to_datetime'
+        '''
+        df = self.getData()
+        if method == 'dummy':  # convert categorical infos into True/False matrix
+            encoded = pd.get_dummies(data=df, columns=subset)
+            print("feature amount reduced:", df.shape[1]-encoded.shape[1])
+        elif method == 'to_datetime':
+            print("Please manuelly use pd.to_datetime().dt.X")
+            print('''Sample code:
+                        data1["Dep_Hour"]= pd.to_datetime(data1['Dep_Time']).dt.hour
+                        data1["Dep_Min"]= pd.to_datetime(data1['Dep_Time']).dt.minute
+                  ''')
+        else:
+            try:
+                encoded = eval(f"{method}().fit_transform(subset)")
+            except Exception as e:
+                raise TypeError(
+                    f"Please check out the X and y arguments. Original Error message: {e}")
+        if inplace:
+            self.update(encoded)
+        return encoded
+
+
+# --------------------------------------------------------------------------------------------------------------
+# Feature Engineering
 if __name__ == "__main__":
     pass
