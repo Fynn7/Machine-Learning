@@ -203,7 +203,7 @@ class DataAnalysis:
         print("end dataIntro")
         separator()
 
-    def getNumCols(self, subset: str | list = None) -> pd.DataFrame:
+    def getNumCols(self, df:pd.DataFrame|None=None,subset: str | list = None) -> pd.DataFrame:
         '''
         Auxillary method
 
@@ -214,7 +214,8 @@ class DataAnalysis:
         `da.getNumCols(subset=['col1','col2',...]])`
 
         '''
-        df = self.getData()
+        if df==None:
+            df = self.getData()
         if subset == None:
             subset = df.columns
         return df.select_dtypes(include=['float64', 'int64'])
@@ -257,7 +258,7 @@ class DataAnalysis:
             return xcorr[:head]
         return xcorr
 
-    def showAllRel(self, col: str) -> None:
+    def showAllRel(self, col: str,how:str='pair') -> list|Figure:
         '''
         show all correlation of all other columns comparing to the argument "col"
 
@@ -265,14 +266,26 @@ class DataAnalysis:
 
         Args:
         - col: column that should be compared with
+        - how: 'pair' | 'heatmap'
         '''
         df = self.getData()
 
         nums = self.getNumCols()
-        for i in range(0, len(nums.columns), 5):
-            sns.pairplot(data=nums,
-                         x_vars=nums.columns[i:i+5],
-                         y_vars=[col])
+
+        if how=='pair':
+            figs=[]
+            for i in range(0, len(nums.columns), 5):
+                fig=sns.pairplot(data=nums,
+                            x_vars=nums.columns[i:i+5],
+                            y_vars=[col])
+                figs.append(fig)
+            return figs
+        elif how=='heatmap':
+            fig=plt.figure(figsize=(18,18))
+            sns.heatmap(df.corr(),annot=True,cmap='RdYlGn')
+            return fig
+        else:
+            raise AttributeError(f"Invalid 'how' argument as '{how}'.")
 
     def showDistr(self, col: str, kde: bool = True) -> float:
         '''
@@ -353,7 +366,7 @@ class DataAnalysis:
         df = self.getData()
         return df.isnull().sum()
 
-    def showNaN(self, head: int = 20, how: str = 'precentage') -> None:
+    def showNaN(self, head: int = 20, how: str = 'precentage') -> Figure:
         '''
         displaying NaN datas in a histplot
 
@@ -366,16 +379,18 @@ class DataAnalysis:
         total_select = total.head(head)
         if how == 'precentage':
             precentage = 100*total_select/len(df)
-            precentage.plot(kind="bar", figsize=(8, 6), fontsize=10)
+            fig=precentage.plot(kind="bar", figsize=(8, 6), fontsize=10)
             plt.ylabel("Precentage %", fontsize=20)
             plt.title("Total Missing Values Precentage %", fontsize=20)
         elif how == 'count':
-            total_select.plot(kind="bar", figsize=(8, 6), fontsize=10)
+            fig=total_select.plot(kind="bar", figsize=(8, 6), fontsize=10)
             plt.ylabel("Count", fontsize=20)
             plt.title("Total Missing Values", fontsize=20)
         else:
             raise AttributeError(f"Invalid 'how' argument as '{how}'.")
         plt.xlabel("Columns", fontsize=20)
+        plt.show()
+        return fig
 
     def handleNaN(self, subset: str | list, how: str = 'row', inplace: bool = False) -> pd.DataFrame:
         '''
@@ -445,7 +460,7 @@ class DataAnalysis:
             raise AttributeError(f"Invalid 'scaler' argument as '{scaler}'.")
     # main function
 
-    def plotOutliers(self, col: str | list | tuple, zscore=True) -> pd.DataFrame | None:
+    def plotOutliers(self, col: str | list | tuple, zscore=True) -> Figure|pd.DataFrame:
         '''
         Auxillary method of `delOutliers`
 
@@ -466,7 +481,8 @@ class DataAnalysis:
             except Exception as e:
                 raise TypeError(
                     f"If you choose a bi-variante feature outlier to seek, aka scatter plot, you must pass the `plot` argument as a list or tuple contains EXACT 2 element.\nOriginal Error message:{e}")
-            df.plot.scatter(x=x, y=y)
+            fig=df.plot.scatter(x=x, y=y)
+            return fig
         if zscore:
             print("Here is the Z-score stats of column", col)
             zstats = stats.zscore(df[col])
@@ -631,6 +647,9 @@ class DataAnalysis:
         fig.show()
         return fig
 
+# --------------------------------------------------------------------------------------------------------------
+# Feature Engineering
+
     def combineSimilarCols(self, col: str, oldName: str, newName: str, axis: int | str = 1, inplace: bool = False) -> pd.Series:
         '''
         Combine rows or columns that has the same meaning
@@ -674,8 +693,19 @@ class DataAnalysis:
             self.update(encoded)
         return encoded
 
-
+    def fitPCA(self,Xcols:list,ycol:str,scaler='StandardScaler',n_components=2)->None:
+        df=self.getData()
+        try:
+            scaler=eval(f"{scaler}()")
+        except Exception as e:
+            raise TypeError(f"Invalid 'scaler' argument:{scaler}")
+        X=self.getNumCols(df=df.loc[:,Xcols])
+        y=df[ycol]
+        transformed=scaler.fit_transform(X,y) # make sure X is a feature matrix which contains only digits
+        pca=PCA(n_components=n_components)
+        return pca.fit_transform(transformed),pca.explained_variance_ratio_
+    
 # --------------------------------------------------------------------------------------------------------------
-# Feature Engineering
+
 if __name__ == "__main__":
     pass
