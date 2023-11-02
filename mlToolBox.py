@@ -12,6 +12,15 @@ import plotly.express as px
 from plotly.graph_objects import Figure
 # --------------------------------------------------------------------------------------------------------------'''
 from sklearn.decomposition import PCA
+from sklearn.manifold import TSNE
+import umap
+# --------------------------------------------------------------------------------------------------------------'''
+# Hypothesis Testing
+import scipy.stats as stats
+from scipy.stats import chi2_contingency
+
+from statsmodels.formula.api import ols
+from statsmodels.stats.anova import anova_lm
 
 
 def trace(func: object) -> object:
@@ -70,22 +79,6 @@ def separator(symb: str | None = '-', l: int = 42, noprint: bool | None = False)
     print(sep)
 
 
-def spacer(n: int | None = 2, noprint: bool | None = False) -> None | str:
-    '''
-    Formatter that separates sections with multiple \\n.
-
-    Args:
-    - n: length of the empty space
-    - noprint: instead of directly printing, it returns multiple lines of blanks
-    '''
-    if not isinstance(n, int):
-        raise TypeError(f"Argument Type Error: {type(n)}==int?")
-    sp = "\n"*(n-1)
-    if noprint:
-        return sp
-    print(sp)
-
-
 def dfChecker(df: pd.DataFrame | pd.Series) -> pd.DataFrame:
     '''
     for Developer
@@ -107,8 +100,16 @@ def dfChecker(df: pd.DataFrame | pd.Series) -> pd.DataFrame:
     return df
 
 
-@trace
-class DataAnalysis:
+def isNone(df: pd.DataFrame | pd.Series) -> pd.DataFrame:
+    if type(df) == type(None):
+        return True
+    else:
+        return False
+
+# @trace
+
+
+class MBI_ML:
     def __init__(self, df: pd.DataFrame | pd.Series) -> None:
         # print("Start initializing instance...")
         self._data = dfChecker(df)
@@ -120,40 +121,44 @@ class DataAnalysis:
 
     def getData(self) -> pd.DataFrame:
         '''
-        Get the current dataframe.
+        Get the current Data.
         '''
         return self._data
 
     def update(self, df: pd.DataFrame | pd.Series) -> None:
+        '''
+        Rewrite dataframe.
+        '''
         self._data = df
 
     def diff(self, df: pd.DataFrame | pd.Series) -> None:
         '''Compare old and new dataframe'''
         return self.getData().compare(df)
 
-    def unique(self, obj: object | None = None) -> list:
-        if obj == None:
+    def unique(self, col: str | list | None = None) -> list:
+        '''
+        Return given object/pd.Series without repeating.
+        '''
+        if col == None:
             df = self.getData()
-            return df.unique().tolist()
-        return obj.unique().tolist()
+            try:
+                return df.unique().tolist()
+            except ValueError:
+                raise ValueError(
+                    "Expected pd.Series object, got %s" % type(df))
+        return df[col].unique().tolist()
 
     def checkTypes(self) -> None:
         '''
         Print out all kinds of types of the current dataframe.
-
-        How to use:
-
-        `da=DataAnalysis()`\n
-        `da.checkTypes()`
-
         '''
         df = self.getData()
 
         typelist = df.dtypes.unique()
         typestr = str(list(typelist)).strip('[]')
-        print(f"{len(typelist)} types in this dataframe:")
-        print("You can see more detailed information with df.info(), which is already displayed before.")
+        print(f"{len(typelist)} type(s) in this dataframe:")
         print(typestr)
+        print("You can see more detailed information with df.info(), which is already displayed before.")
 
     def isin(self, subset: str | list, isin: list | tuple) -> pd.DataFrame:
         '''
@@ -197,30 +202,86 @@ class DataAnalysis:
         print("Basic Information of dataframe")
         separator()
         df.info()
-        spacer()
+        separator(symb=' ')
         print(df.describe())
         separator()
         print("end dataIntro")
         separator()
 
-    def getNumCols(self, df:pd.DataFrame|None=None,subset: str | list = None) -> pd.DataFrame:
+    def getTypes(self, df: pd.DataFrame | None = None) -> pd.Series:
+        '''
+        Get all types in the given dataframe.
+        '''
+        if isNone(df):
+            df = self.getData()
+        return df.dtypes
+
+    def excludeTypes(self, exclude:str|list,df: pd.DataFrame | None = None,inplace:bool=False) -> pd.DataFrame:
+        '''
+        Remove cols that contains data according to the given types.
+        '''
+        if isNone(df):
+            df = self.getData()
+        excluded=df.select_dtypes(exclude=exclude)
+        if inplace:
+            self.update(excluded)
+        return excluded
+
+    def includeTypes(self,include:str|list,df: pd.DataFrame | None = None,inplace:bool=False) -> pd.DataFrame | pd.Series:
+        '''
+        Only keep cols that has given types of data.
+        '''
+        if isNone(df):
+            df = self.getData()
+        included=df.select_dtypes(include=include)
+        if inplace:
+            self.update(included)
+        return included
+    
+    def toFloat(self,df: pd.DataFrame | None = None,subset:str|list|None=None,inplace:bool=False,**kwargs)->pd.DataFrame:
+        if isNone(df):
+            df = self.getData()
+        if isNone(subset):
+            subset=df.columns
+        # set default argument 'errors='ignore' ' of methode `pd.to_numeric`
+        try:
+            kwargs['errors']
+        except KeyError:
+            kwargs['errors']='coerce'
+            print(f"DEBUGGER: toNumeric method passes an argument named 'errors'=={kwargs['errors']}") # DEBUGGER
+
+        for col in subset:
+            # numericed=df.astype(float,errors=kwargs['errors'])
+            df[col]=pd.to_numeric(df[col],errors=kwargs['errors'])
+            # un-digit objects will turn into NaN with errors='coerce'
+
+        if inplace:
+            self.update(df)
+        return df
+    
+    def getNumCols(self, df: pd.DataFrame | None = None,inplace:bool=False,**kwargs) -> pd.DataFrame | pd.Series:
         '''
         Auxillary method
 
-        Return dataframe only contains type 'float64' and 'int64'.
-
-        Args:
-        - subset: if you want to return a part of columns and only contain numbers, use `subset` to input the wanted dataframe
-        `da.getNumCols(subset=['col1','col2',...]])`
-
+        We first try to turn all data into numeric then
+        Return dataframe only contains type 'float' and 'int'.
         '''
-        if df==None:
+        if isNone(df):
             df = self.getData()
-        if subset == None:
-            subset = df.columns
-        return df.select_dtypes(include=['float64', 'int64'])
+        
+        # handling kwargs
+        argsStr=""
+        for k,v in kwargs.items():
+            argsStr+=f"{k}={v},"
+        argsStr.strip(',')
 
-    def createCorrMat(self, corrType: str = 'pearson') -> pd.DataFrame:
+        df=eval(f"self.toFloat(df,errors='ignore',{argsStr})")
+        got=self.includeTypes(include=['float','int'])
+        if inplace:
+            self.update(got)
+        return got
+    
+    def createCorrMat(self, df: pd.DataFrame | None = None, corrType: str = 'pearson') -> pd.DataFrame:
         '''
         Auxillary method
 
@@ -230,9 +291,10 @@ class DataAnalysis:
         - corrType: 'pearson','kendall', 'spearman'
         '''
         df = self.getData()
-
+        if isNone(df):
+            df = self.getData()
         # only analyse numbers
-        nums = self.getNumCols()
+        nums = self.getNumCols(df=df)
         corrmat = nums.corr(method=corrType)
         return corrmat
 
@@ -258,7 +320,7 @@ class DataAnalysis:
             return xcorr[:head]
         return xcorr
 
-    def showAllRel(self, col: str,how:str='pair') -> list|Figure:
+    def showAllRel(self, col: str, how: str = 'pair') -> list | Figure:
         '''
         show all correlation of all other columns comparing to the argument "col"
 
@@ -272,17 +334,17 @@ class DataAnalysis:
 
         nums = self.getNumCols()
 
-        if how=='pair':
-            figs=[]
+        if how == 'pair':
+            figs = []
             for i in range(0, len(nums.columns), 5):
-                fig=sns.pairplot(data=nums,
-                            x_vars=nums.columns[i:i+5],
-                            y_vars=[col])
+                fig = sns.pairplot(data=nums,
+                                   x_vars=nums.columns[i:i+5],
+                                   y_vars=[col])
                 figs.append(fig)
             return figs
-        elif how=='heatmap':
-            fig=plt.figure(figsize=(18,18))
-            sns.heatmap(df.corr(),annot=True,cmap='RdYlGn')
+        elif how == 'heatmap':
+            fig = plt.figure(figsize=(18, 18))
+            sns.heatmap(df.corr(), annot=True, cmap='RdYlGn')
             return fig
         else:
             raise AttributeError(f"Invalid 'how' argument as '{how}'.")
@@ -379,11 +441,11 @@ class DataAnalysis:
         total_select = total.head(head)
         if how == 'precentage':
             precentage = 100*total_select/len(df)
-            fig=precentage.plot(kind="bar", figsize=(8, 6), fontsize=10)
+            fig = precentage.plot(kind="bar", figsize=(8, 6), fontsize=10)
             plt.ylabel("Precentage %", fontsize=20)
             plt.title("Total Missing Values Precentage %", fontsize=20)
         elif how == 'count':
-            fig=total_select.plot(kind="bar", figsize=(8, 6), fontsize=10)
+            fig = total_select.plot(kind="bar", figsize=(8, 6), fontsize=10)
             plt.ylabel("Count", fontsize=20)
             plt.title("Total Missing Values", fontsize=20)
         else:
@@ -439,7 +501,7 @@ class DataAnalysis:
             self._data = dropped
         return dropped
 
-    def transformData(self, subset: str | list = None, scaler: str = 'min-max') -> np.ndarray:
+    def transformData(self, subset: str | list = None, scaler: str = 'MinMaxScaler') -> np.ndarray:
         '''
         Feature Scaling step.
         Uses "getNumCols()" in order to analyse numbers.
@@ -447,20 +509,20 @@ class DataAnalysis:
         Return: transformed data
 
         Args:
-        - scaler: 'min-max' as `MinMaxScaler()`; 'standard' as `StandardScaler()`
+        - scaler: `MinMaxScaler`; `StandardScaler` ; ...
+
+        **Note: We're training new data, so we use `SCALER.fit_transform()`
         '''
         df = self.getData()
         # here will just input subset argument and check, if subset==None
         nums = self.getNumCols(subset=subset)
-        if scaler == 'min-max':
-            return MinMaxScaler().fit_transform(nums)
-        elif scaler == 'standard':
-            return StandardScaler().fit_transform(nums)
-        else:
+        try:
+            return eval(f"{scaler}().fit_transform({nums})")
+        except AttributeError:
             raise AttributeError(f"Invalid 'scaler' argument as '{scaler}'.")
     # main function
 
-    def plotOutliers(self, col: str | list | tuple, zscore=True) -> Figure|pd.DataFrame:
+    def plotOutliers(self, col: str | list | tuple, zscore=True) -> Figure | pd.DataFrame:
         '''
         Auxillary method of `delOutliers`
 
@@ -481,7 +543,7 @@ class DataAnalysis:
             except Exception as e:
                 raise TypeError(
                     f"If you choose a bi-variante feature outlier to seek, aka scatter plot, you must pass the `plot` argument as a list or tuple contains EXACT 2 element.\nOriginal Error message:{e}")
-            fig=df.plot.scatter(x=x, y=y)
+            fig = df.plot.scatter(x=x, y=y)
             return fig
         if zscore:
             print("Here is the Z-score stats of column", col)
@@ -527,14 +589,14 @@ class DataAnalysis:
         df = self.getData()
         # zstats=self.plotOutliers(col=col)
         if how == 'sort':
-            _sorted = df.sort_values(by=col, ascending=ascending)
+            sorted = df.sort_values(by=col, ascending=ascending)
             print(
                 "Now the dataframe has sorted. Find out the outliers by index and drop them yourself!")
         else:
             raise AttributeError(f"Invalid 'how' argument as '{how}'.")
         if inplace:
-            self._data = _sorted
-        return _sorted
+            self.update(sorted)
+        return sorted
 
     def analyseData(self, col: str | None = None) -> None:
         '''
@@ -544,6 +606,9 @@ class DataAnalysis:
         Args:
         - df: `pd.Dataframe()`
         '''
+
+        print("Do steps separately is better.")
+        return
         if col == None:
             self.dataIntro()
             self.checkTypes()
@@ -627,7 +692,7 @@ class DataAnalysis:
         - figType: 'line', 'bar', ... used as px.figType()
 
         '''
-        if df == None:
+        if isNone(df):
             df = self.getData()
         if title == '':
             title = 'An automatically created plot about '+x+' and '+y
@@ -685,26 +750,56 @@ class DataAnalysis:
                   ''')
         else:
             try:
-                encoded = eval(f"{method}().fit_transform(subset)")
+                encoded = eval(f"{method}().fit_transform(df[subset])")
             except Exception as e:
                 raise TypeError(
-                    f"Please check out the X and y arguments. Original Error message: {e}")
+                    f"Invalid method argument '{method}'?. Original Error message: {e}")
         if inplace:
-            self.update(encoded)
+            df[subset] = encoded
+            self.update(df)
         return encoded
 
-    def fitPCA(self,Xcols:list,ycol:str,scaler='StandardScaler',n_components=2)->None:
-        df=self.getData()
+    def scale(self, scaler='StandardScaler'):
+        df = self.getData()
         try:
-            scaler=eval(f"{scaler}()")
+            scaled = eval(f"{scaler}()")
+            return scaled
         except Exception as e:
-            raise TypeError(f"Invalid 'scaler' argument:{scaler}")
-        X=self.getNumCols(df=df.loc[:,Xcols])
-        y=df[ycol]
-        transformed=scaler.fit_transform(X,y) # make sure X is a feature matrix which contains only digits
-        pca=PCA(n_components=n_components)
-        return pca.fit_transform(transformed),pca.explained_variance_ratio_
-    
+            raise TypeError(f"Invalid 'scaler' argument: {scaler}")
+
+    def dimReducer(self, Xcols: list, ycol: str, scaler='StandardScaler', how='PCA', **kwargs) -> None:
+        '''
+        !!! should bring in PCA, t-SNE, umap... (dimension reduction) 
+        '''
+
+        df = self.getData()
+        # First set the scaler
+        scaled = self.scale(scaler=scaler)
+        X = self.getNumCols(df=df.loc[:, Xcols])
+        y = df[ycol]
+        # make sure X is a feature matrix which contains only digits
+        transformed = scaled.fit_transform(X, y)
+
+        if how == 'PCA':
+            try:
+                pca = PCA(n_components=kwargs['n_components'])
+            except KeyError:
+                raise KeyError(
+                    f"Didn't get argument n_components in kwargs: {kwargs}.")
+            return pca.fit_transform(transformed), pca.explained_variance_ratio_
+        else:
+            raise Exception(f"Temperaly not supported how=={how}")
+# --------------------------------------------------------------------------------------------------------------
+# Hypothesis Testing
+
+# REQUIREMENTS:
+# import scipy.stats as stats
+# from scipy.stats import chi2_contingency
+
+# from statsmodels.formula.api import ols
+# from statsmodels.stats.anova import anova_lm
+
+
 # --------------------------------------------------------------------------------------------------------------
 
 if __name__ == "__main__":
