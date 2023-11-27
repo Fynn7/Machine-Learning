@@ -47,60 +47,64 @@ def raiseTypeError(arg: object, shouldBe: type | object) -> None:
 
     See: `InvalidErrorSample.txt` under this folder
     '''
-    print('''    Should finally switch to InvalidParameterError,
-    and written inside class as a methode
-    But we don't wanna focus on this right now
-          
-    See: `InvalidErrorSample.txt` under this folder''')
     raise TypeError(
         f'【{arg}】 should be 【{shouldBe}】, not 【{type(arg)}.】')
 
 
-def todf(l: list | dict | pd.Series) -> pd.DataFrame:
+def todf(l: list|pd.DataFrame|pd.Series) -> pd.DataFrame:
+    '''
+    ★ It saves A LOT OF to code!
+    First try to convert l to DataFrame,
+    it also automatically checked the types.
+    '''
     try:
         return pd.DataFrame(l)
     except ValueError:
-        raiseTypeError(l, '`list`|`dict`|`pd.Series`')
+        raiseTypeError(l, '`DataFrame-Like`')
 
-
-def isFunc(o: object) -> bool:
-    return callable(o)
-
-
-def isType(o: object, t: type) -> bool:
-    return type(o) == t
-
-
-def isdf(o: object) -> bool:
-    return type(o) == type(pd.DataFrame())
-
-
-def isNone(o: object) -> bool:
-    return type(o) == type(None)
+def toseries(l: list|pd.DataFrame|pd.Series) -> pd.DataFrame:
+    '''
+    ★ It saves A LOT OF to code!
+    First try to convert l to Series,
+    it also automatically checked the types.
+    '''
+    try:
+        return pd.Series(l)
+    except ValueError:
+        raiseTypeError(l, '`Series-Like`')
 
 
 def isEmpty(df: pd.DataFrame) -> bool:
-    return df.empty if type(df) == type(pd.DataFrame()) else raiseTypeError(df, 'DataFrame')
+    return todf(df).empty
 
 
 def compare(oldData: pd.DataFrame, newData: pd.DataFrame) -> pd.DataFrame:
-    return pd.DataFrame(oldData).compare(pd.DataFrame(newData))
+    return todf(oldData).compare(todf(newData))
 
 
 def exclude(df: pd.DataFrame, exclude: str | list | type) -> pd.DataFrame:
-    return df.select_dtypes(exclude=exclude) if type(df) == type(pd.DataFrame()) else raiseTypeError(df, 'DataFrame')
+    '''
+    ```
+    >>> exclude(df,object)
+    
+    ```
+    '''
+    return todf(df).select_dtypes(exclude=exclude)
 
 
 def include(df: pd.DataFrame, include: str | list | type) -> pd.DataFrame:
     '''
-    include(df,np.float64)
+    ```
+    >>> include(df,np.float64)
     ```
     '''
-    return df.select_dtypes(include=include) if type(df) == type(pd.DataFrame()) else raiseTypeError(df, 'DataFrame')
+    return todf(df).select_dtypes(include=include)
 
 
 def toNumeric(s: pd.Series, errors: str = 'coerce') -> pd.Series:
     '''
+    if errors == coerce: the errors are transfered to NaN.
+    if errors == ignore: the errors stay their original values
     # Example:
     ```
     >>> df = pd.DataFrame({'col1': ['1', '2'], 'col2': [3, 'ABC']})
@@ -112,14 +116,14 @@ def toNumeric(s: pd.Series, errors: str = 'coerce') -> pd.Series:
     1   2       NaN
     ```
     '''
-    return pd.to_numeric(s, errors=errors)
+    return pd.to_numeric(toseries(s), errors=errors)
 
 
 def scoreDataset(X: pd.DataFrame, y: pd.Series, model: str = 'RandomForestRegressor', test_size: float | int | None = None, train_size: float | int | None = None, random_state: int | None = None, **kwargs):
     if type(model) != str:
         raiseTypeError(model, str)
     Xtrain, Xtest, ytrain, ytest = train_test_split(
-        X, y, test_size=test_size, train_size=train_size, random_state=random_state)
+        todf(X), toseries(y), test_size=test_size, train_size=train_size, random_state=random_state)
     # building up the code
     argsComm = "("
     for k, v in kwargs.items():
@@ -183,6 +187,7 @@ def ohe(Xtrain: pd.DataFrame | pd.Series, Xtest: pd.DataFrame | pd.Series, catCo
     NOTE: Those Features whose cardinality low is, are fit to preprocess with OneHotEncoder.
     Otherwise it's ok to use OrdinalEncoder
     '''
+    Xtrain,Xtest=todf(Xtrain),todf(Xtest) # test if these are DataFrame-Like
     if catCols == None:
         print(
             "Warning: You didn't input argument {catcols}, so we select all object-type columns to be one-hot encoded.")
@@ -223,6 +228,7 @@ def oe(Xtrain: pd.DataFrame | pd.Series, Xtest: pd.DataFrame | pd.Series, catCol
     Bad columns mean the features in those, couldn't be found in validation/test dataframe.
     '''
     # Preprocess:
+    Xtrain,Xtest=todf(Xtrain),todf(Xtest) # test if these are DataFrame-Like
     if catCols == None:
         print(
             "Warning: You didn't input argument {catcols}, so we select all object-type columns to be one-hot encoded.")
@@ -245,28 +251,22 @@ def oe(Xtrain: pd.DataFrame | pd.Series, Xtest: pd.DataFrame | pd.Series, catCol
     return XtrainEncoded, XtestEncoded
 
 
-def nunique(df: pd.DataFrame, catCols: list | str | None = None, sort: bool = False) -> dict[tuple]:
+def nunique(df: pd.DataFrame|pd.Series, catCols: list | str | None = None, sort: bool = False) -> dict[tuple]:
     '''
-    Return 
+    Return a dict data structure, whose keys are the column name and whose values are the amount of the unique values.
     '''
-    if type(df) != type(pd.DataFrame()):
-        raiseTypeError(df, 'DataFrame')
+    df=todf(df)
     if type(catCols) == type(None):
         print(
-            "Warning: You didn't input argument {catcols}, so we select all object-type columns.")
+            "Warning: You didn't input argument `catcols`, so we select all object-type columns.")
         catCols = [col for col in df.columns if df[col].dtype == "object"]
         # Would this work instead? >>>
         # catCols = Xtrain.select_dtypes(include=object).columns
-    return sorted(dict(
-        zip(catCols, list(
-            map(lambda col: df[col].nunique(), catCols)
-        )
-        )).items(), key=lambda t: t[1]) if sort else dict(
-        zip(catCols, list(
-            map(lambda col: df[col].nunique(), catCols)
-        )
-        ))
+    return {k: v for k, v in sorted(dict(zip(catCols, list(map(lambda col: df[col].nunique(), catCols)))).items(), key=lambda t: t[1])} if sort else dict(zip(catCols, list(map(lambda col: df[col].nunique(), catCols))))
 
+def getNanCols(df:pd.DataFrame|pd.Series,how:str="any"):
+    df=todf(df)
+    return eval(f"[col for col in df.columns if df[col].isnull().{how}()]")
 
 class Model():
     def __init__(self, X: pd.DataFrame, y: pd.Series, model: str = 'RandomForestRegressor', test_size: float | int | None = None, train_size: float | int | None = None, random_state: int | None = None) -> None:
@@ -293,18 +293,19 @@ class Model():
         Name: color, dtype: object)
         ```
         '''
-        self.init(X,y,model,test_size=test_size,train_size=train_size,random_state=random_state)
+        self.init(X, y, model, test_size=test_size,
+                  train_size=train_size, random_state=random_state)
 
     def __str__(self) -> str:
-        df=self._X
-        df[self._y.name]=self._y
+        df = self._X
+        df[self._y.name] = self._y
         return df.to_string()
 
     def __repr__(self) -> str:
-        df=self._X
-        df[self._y.name]=self._y
+        df = self._X
+        df[self._y.name] = self._y
         return df.to_string()
-    
+
     def init(self, X: pd.DataFrame, y: pd.Series, model: str = 'RandomForestRegressor', test_size: float | int | None = None, train_size: float | int | None = None, random_state: int | None = None):
         '''
         ★ Initalize all data.
@@ -349,7 +350,7 @@ class Model():
         566  16.60  28.08  108.30   858.1  0.08455  0.10230  0.09251  0.05302  0.1590   
         567  20.60  29.33  140.10  1265.0  0.11780  0.27700  0.35140  0.15200  0.2397   
         568   7.76  24.54   47.92   181.0  0.05263  0.04362  0.00000  0.00000  0.1587   
-        
+
                 9   ...      20     21      22      23       24       25      26   
         0    0.07871  ...  25.380  17.33  184.60  2019.0  0.16220  0.66560  0.7119  \
         1    0.05667  ...  24.990  23.41  158.80  1956.0  0.12380  0.18660  0.2416   
@@ -370,20 +371,28 @@ class Model():
         Length: 569, dtype: int32)
         ```
         '''
-        self._X = pd.DataFrame(X) if isType(pd.DataFrame(X), type(pd.DataFrame())) else raiseTypeError(X,'DataFrame')
-        self._y = pd.Series(y) if isType(pd.Series(y), type(pd.Series())) else raiseTypeError(y, 'Series')
-        self._Xtrain, self._Xtest, self._ytrain, self._ytest = train_test_split(X, y, train_size=train_size, test_size=test_size, random_state=random_state)
-        self._model = model if isType(model, str) else raiseTypeError(model, str)
-        self._mae = 0  # Mean Absolute Error score
+        self._X = todf(X)
+        print("X updated.")
+        self._y = toseries(y)
+        print("y updated.")
 
+        self._Xtrain, self._Xtest, self._ytrain, self._ytest = train_test_split(
+            X, y, train_size=train_size, test_size=test_size, random_state=random_state)
+        print("Train Test Splits updated.")
+        
+        self._model = model if type(model)==str else raiseTypeError(model, str)
+        print("Model updated.")
+
+        self._mae = 0  # Mean Absolute Error score
 
     def _validateParam(self) -> None:
         ...
 
-    def info(self)->None:
-        attrs=self.__dict__
-        for k,v in attrs.items():
-            print(f"==========================================\n{k.strip('_')}:\n---------------------\n{v}\n")
+    def info(self) -> None:
+        attrs = self.__dict__
+        for k, v in attrs.items():
+            print(
+                f"==========================================\n{k.strip('_')}:\n---------------------\n{v}\n")
         print("==========================================")
 
     def getXy(self) -> tuple[pd.DataFrame, pd.Series]:
@@ -438,7 +447,7 @@ class Model():
         566  16.60  28.08  108.30   858.1  0.08455  0.10230  0.09251  0.05302  0.1590   
         567  20.60  29.33  140.10  1265.0  0.11780  0.27700  0.35140  0.15200  0.2397   
         568   7.76  24.54   47.92   181.0  0.05263  0.04362  0.00000  0.00000  0.1587   
-        
+
                 9   ...      20     21      22      23       24       25      26   
         0    0.07871  ...  25.380  17.33  184.60  2019.0  0.16220  0.66560  0.7119  \
         1    0.05667  ...  24.990  23.41  158.80  1956.0  0.12380  0.18660  0.2416   
@@ -461,7 +470,7 @@ class Model():
         '''
         for k, v in kwargs.items():
             try:
-                exec(f"self._{k}") # check if the attribute exists
+                exec(f"self._{k}")  # check if the attribute exists
             except AttributeError:
                 raise AttributeError(f"Attribute {k} not found.")
             exec(f"self._{k}=v")
@@ -541,13 +550,13 @@ class Model():
             catCols = Xtrain.select_dtypes(include=object).columns
         otherCols = list(set(Xtrain.columns)-set(catCols))
         # Apply one-hot encoder to each column with categorical data
-        print("All Columns:",list(Xtrain.columns))
+        print("All Columns:", list(Xtrain.columns))
         print("Categorical Columns:", list(catCols))
         print("Other Columns:", otherCols)
         encoder = OneHotEncoder(
             handle_unknown=handle_unknown, sparse_output=sparse)
-        catXtrainEncoded = pd.DataFrame(encoder.fit_transform(Xtrain[catCols]))
-        catXtestEncoded = pd.DataFrame(encoder.transform(Xtest[catCols]))
+        catXtrainEncoded = todf(encoder.fit_transform(Xtrain[catCols]))
+        catXtestEncoded = todf(encoder.transform(Xtest[catCols]))
 
         # One-hot encoding removed index; put it back
         catXtrainEncoded.index = Xtrain.index
