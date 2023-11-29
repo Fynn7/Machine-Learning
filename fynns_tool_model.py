@@ -13,31 +13,6 @@ from sklearn.metrics import mean_absolute_error
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.preprocessing import OrdinalEncoder, OneHotEncoder
 
-# def getArgs(f):
-#     '''Note that the function that uses this decorator DOES NOT RETURN!'''
-#     @wraps(f)
-#     def w(*args,**kwargs)->tuple[list[tuple],list[tuple]]:
-#         if f(*args,**kwargs)!=None:
-#             print("!!!Warning: This function will NOT return its original return, instead it will return argument infos, if you use this decorator!")
-#         a = [(param, value) for param, value in zip(f.__code__.co_varnames, args)] # args of the original function
-#         kw = [(key, value) for key, value in kwargs.items()]
-#         return a,kw
-#     return w
-
-
-# class InvalidParameterError(Exception):
-#     def __init__(self, *args: object) -> None:
-#         super().__init__(*args)
-
-# class ArrayLike(list):
-
-# def isNumeric(o:object)->bool:
-#     if type(o)==str:
-#         return o.isnumeric()
-#     try:
-#         float(o)
-#     except ValueError:
-#         return False
 
 def raiseTypeError(arg: object, shouldBe: type | object) -> None:
     '''
@@ -51,7 +26,7 @@ def raiseTypeError(arg: object, shouldBe: type | object) -> None:
         f'【{arg}】 should be 【{shouldBe}】, not 【{type(arg)}.】')
 
 
-def todf(l: list|pd.DataFrame|pd.Series) -> pd.DataFrame:
+def todf(l: list | pd.DataFrame | pd.Series) -> pd.DataFrame:
     '''
     ★ It saves A LOT OF to code!
     First try to convert l to DataFrame,
@@ -62,7 +37,8 @@ def todf(l: list|pd.DataFrame|pd.Series) -> pd.DataFrame:
     except ValueError:
         raiseTypeError(l, '`DataFrame-Like`')
 
-def toseries(l: list|pd.DataFrame|pd.Series) -> pd.DataFrame:
+
+def toseries(l: list | pd.DataFrame | pd.Series) -> pd.DataFrame:
     '''
     ★ It saves A LOT OF to code!
     First try to convert l to Series,
@@ -74,202 +50,207 @@ def toseries(l: list|pd.DataFrame|pd.Series) -> pd.DataFrame:
         raiseTypeError(l, '`Series-Like`')
 
 
-def isEmpty(df: pd.DataFrame) -> bool:
-    return todf(df).empty
+# def isEmpty(df: pd.DataFrame) -> bool:
+#     return todf(df).empty
 
 
-def compare(oldData: pd.DataFrame, newData: pd.DataFrame) -> pd.DataFrame:
-    return todf(oldData).compare(todf(newData))
+# def compare(oldData: pd.DataFrame, newData: pd.DataFrame) -> pd.DataFrame:
+#     return todf(oldData).compare(todf(newData))
 
 
-def exclude(df: pd.DataFrame, exclude: str | list | type) -> pd.DataFrame:
-    '''
-    ```
-    >>> exclude(df,object)
-    
-    ```
-    '''
-    return todf(df).select_dtypes(exclude=exclude)
+# def exclude(df: pd.DataFrame, exclude: str | list | type) -> pd.DataFrame:
+#     '''
+#     ```
+#     >>> exclude(df,object)
+
+#     ```
+#     '''
+#     return todf(df).select_dtypes(exclude=exclude)
 
 
-def include(df: pd.DataFrame, include: str | list | type) -> pd.DataFrame:
-    '''
-    ```
-    >>> include(df,np.float64)
-    ```
-    '''
-    return todf(df).select_dtypes(include=include)
+# def include(df: pd.DataFrame, include: str | list | type) -> pd.DataFrame:
+#     '''
+#     ```
+#     >>> include(df,np.float64)
+#     ```
+#     '''
+#     return todf(df).select_dtypes(include=include)
 
 
-def toNumeric(s: pd.Series, errors: str = 'coerce') -> pd.Series:
-    '''
-    if errors == coerce: the errors are transfered to NaN.
-    if errors == ignore: the errors stay their original values
-    # Example:
-    ```
-    >>> df = pd.DataFrame({'col1': ['1', '2'], 'col2': [3, 'ABC']})
-    >>> for col in df.columns:
-    >>>     df[col] = toNumeric(df[col])
-    >>> df
-        col1    col2
-    0   1       3.0
-    1   2       NaN
-    ```
-    '''
-    return pd.to_numeric(toseries(s), errors=errors)
+# def toNumeric(s: pd.Series, errors: str = 'coerce') -> pd.Series:
+#     '''
+#     if errors == coerce: the errors are transfered to NaN.
+#     if errors == ignore: the errors stay their original values
+#     # Example:
+#     ```
+#     >>> df = pd.DataFrame({'col1': ['1', '2'], 'col2': [3, 'ABC']})
+#     >>> for col in df.columns:
+#     >>>     df[col] = toNumeric(df[col])
+#     >>> df
+#         col1    col2
+#     0   1       3.0
+#     1   2       NaN
+#     ```
+#     '''
+#     return pd.to_numeric(toseries(s), errors=errors)
 
 
-def scoreDataset(X: pd.DataFrame, y: pd.Series, model: str = 'RandomForestRegressor', test_size: float | int | None = None, train_size: float | int | None = None, random_state: int | None = None, **kwargs):
-    if type(model) != str:
-        raiseTypeError(model, str)
-    Xtrain, Xtest, ytrain, ytest = train_test_split(
-        todf(X), toseries(y), test_size=test_size, train_size=train_size, random_state=random_state)
-    # building up the code
-    argsComm = "("
-    for k, v in kwargs.items():
-        argsComm += f"{k}="
-        argsComm += f"{v},"
-    argsComm += "random_state=random_state)"
-    m = eval(f"{model}{argsComm}")
-    try:
-        m.fit(Xtrain, ytrain)
-    except NameError:
-        raise NameError(f"Model name `{model}` not found.")
-    p = m.predict(Xtest)
-    score = mean_absolute_error(ytest, p)
-    print(f'''
-    Model: {model}
-    Model Arguments: {kwargs}
-    MAE Score: {score}
-          ''')
-    return score
+# def scoreDataset(X: pd.DataFrame, y: pd.Series, model: str = 'RandomForestRegressor', test_size: float | int | None = None, train_size: float | int | None = None, random_state: int | None = None, **kwargs):
+#     if type(model) != str:
+#         raiseTypeError(model, str)
+#     Xtrain, Xtest, ytrain, ytest = train_test_split(
+#         todf(X), toseries(y), test_size=test_size, train_size=train_size, random_state=random_state)
+#     # building up the code
+#     argsComm = "("
+#     for k, v in kwargs.items():
+#         argsComm += f"{k}="
+#         argsComm += f"{v},"
+#     argsComm += "random_state=random_state)"
+#     m = eval(f"{model}{argsComm}")
+#     try:
+#         m.fit(Xtrain, ytrain)
+#     except NameError:
+#         raise NameError(f"Model name `{model}` not found.")
+#     p = m.predict(Xtest)
+#     score = mean_absolute_error(ytest, p)
+#     print(f'''
+#     Model: {model}
+#     Model Arguments: {kwargs}
+#     MAE Score: {score}
+#           ''')
+#     return score
 
 
-def ohe(Xtrain: pd.DataFrame | pd.Series, Xtest: pd.DataFrame | pd.Series, catCols: list | str | None = None, handle_unknown: str = 'ignore', sparse: bool = False, **kwargs) -> tuple[pd.DataFrame, pd.Series]:
-    '''
-    Return encoded categorical features DataFrame with OneHotEncoder.
+# def ohe(Xtrain: pd.DataFrame | pd.Series, Xtest: pd.DataFrame | pd.Series, catCols: list | str | None = None, handle_unknown: str = 'ignore', sparse: bool = False, **kwargs) -> tuple[pd.DataFrame, pd.Series]:
+#     '''
+#     Return encoded categorical features DataFrame with OneHotEncoder.
 
-    - X: should be the whole matrix(`pd.DataFrame()`) of the features. INCLUDING NOT-CATEGORICAL FEATURES
-    - y: should be the whole vector(`pd.Series()`) of the target feature.
+#     - X: should be the whole matrix(`pd.DataFrame()`) of the features. INCLUDING NOT-CATEGORICAL FEATURES
+#     - y: should be the whole vector(`pd.Series()`) of the target feature.
 
-    # Example:
-    ```
-    >>> df = pd.DataFrame({'taste': ['Sweet','Sweet', 'Sour','Sweet','Sour'], 'size': ['Big','Big','Small','Medium','Small'],'int_size': [7,8,2,4,2],'color':['Red','Green','Green','Red','Green']})
-    >>> df
-        taste	size	int_size	color
-    0	Sweet	Big	    7	        Red
-    1	Sweet	Big	    8	        Green
-    2	Sour	Small	2	        Green
-    3	Sweet	Medium	4	        Red
-    4	Sour	Small	2	        Green
-    >>> X = df[['taste','size','int_size']] # or: `X = df.select_dtypes(include=object)`
-    >>> catCols = ['taste','size']
-    >>> ohe(Xtrain,Xtest, catCols = catCols)
-    (     0    1    2    3    4
-    3   0.0  1.0  0.0  1.0  0.0
-    0   0.0  1.0  1.0  0.0  0.0
-    2   1.0  0.0  0.0  0.0  1.0, # totally same as 4 because their features are totally same, so they're included in 1 same type in One Hot Encoding
-        0    1    2    3    4
-    1   0.0  1.0  1.0  0.0  0.0
-    4   1.0  0.0  0.0  0.0  1.0)
-    ```
+#     # Example:
+#     ```
+#     >>> df = pd.DataFrame({'taste': ['Sweet','Sweet', 'Sour','Sweet','Sour'], 'size': ['Big','Big','Small','Medium','Small'],'int_size': [7,8,2,4,2],'color':['Red','Green','Green','Red','Green']})
+#     >>> df
+#         taste	size	int_size	color
+#     0	Sweet	Big	    7	        Red
+#     1	Sweet	Big	    8	        Green
+#     2	Sour	Small	2	        Green
+#     3	Sweet	Medium	4	        Red
+#     4	Sour	Small	2	        Green
+#     >>> X = df[['taste','size','int_size']] # or: `X = df.select_dtypes(include=object)`
+#     >>> catCols = ['taste','size']
+#     >>> ohe(Xtrain,Xtest, catCols = catCols)
+#     (     0    1    2    3    4
+#     3   0.0  1.0  0.0  1.0  0.0
+#     0   0.0  1.0  1.0  0.0  0.0
+#     2   1.0  0.0  0.0  0.0  1.0, # totally same as 4 because their features are totally same, so they're included in 1 same type in One Hot Encoding
+#         0    1    2    3    4
+#     1   0.0  1.0  1.0  0.0  0.0
+#     4   1.0  0.0  0.0  0.0  1.0)
+#     ```
 
-    # Explaination of the output:
-    For One Hot Encoding, we observe all categorical features into single 1 monolithic, whole feature that is represented by a bunch of binary digits.
+#     # Explaination of the output:
+#     For One Hot Encoding, we observe all categorical features into single 1 monolithic, whole feature that is represented by a bunch of binary digits.
 
-    There's 3 features and there should be 2*3*2=16<2**5 binary-formed encoded features
-    eg: for Sample 3(`df[3]`): it is encoded to 01010, which represents Sweet, Medium, Red,
-    and this 3 features are actually unique in this dataset,
-    so there are no other 01010 encoded sample as sample 3.
+#     There's 3 features and there should be 2*3*2=16<2**5 binary-formed encoded features
+#     eg: for Sample 3(`df[3]`): it is encoded to 01010, which represents Sweet, Medium, Red,
+#     and this 3 features are actually unique in this dataset,
+#     so there are no other 01010 encoded sample as sample 3.
 
-    On the contrary of sample 2 and 4, their categorical features are TOTALLY same, so they were encoded totally same as well.
+#     On the contrary of sample 2 and 4, their categorical features are TOTALLY same, so they were encoded totally same as well.
 
-    NOTE: Those Features whose cardinality low is, are fit to preprocess with OneHotEncoder.
-    Otherwise it's ok to use OrdinalEncoder
-    '''
-    Xtrain,Xtest=todf(Xtrain),todf(Xtest) # test if these are DataFrame-Like
-    if catCols == None:
-        print(
-            "Warning: You didn't input argument {catcols}, so we select all object-type columns to be one-hot encoded.")
-        catCols = Xtrain.select_dtypes(include=object).columns
-    otherCols = list(set(Xtrain.columns)-set(catCols))
-    # Apply one-hot encoder to each column with categorical data
-    print("Categorical Columns:", list(catCols))
-    print("Other Columns:", otherCols)
-    encoder = OneHotEncoder(
-        handle_unknown=handle_unknown, sparse_output=sparse)
-    catXtrainEncoded = pd.DataFrame(encoder.fit_transform(Xtrain[catCols]))
-    catXtestEncoded = pd.DataFrame(encoder.transform(Xtest[catCols]))
+#     NOTE: Those Features whose cardinality low is, are fit to preprocess with OneHotEncoder.
+#     Otherwise it's ok to use OrdinalEncoder
+#     '''
+#     Xtrain, Xtest = todf(Xtrain), todf(
+#         Xtest)  # test if these are DataFrame-Like
+#     if catCols == None:
+#         print(
+#             "Warning: You didn't input argument {catcols}, so we select all object-type columns to be one-hot encoded.")
+#         catCols = Xtrain.select_dtypes(include=object).columns
+#     otherCols = list(set(Xtrain.columns)-set(catCols))
+#     # Apply one-hot encoder to each column with categorical data
+#     print("Categorical Columns:", list(catCols))
+#     print("Other Columns:", otherCols)
+#     encoder = OneHotEncoder(
+#         handle_unknown=handle_unknown, sparse_output=sparse)
+#     catXtrainEncoded = pd.DataFrame(encoder.fit_transform(Xtrain[catCols]))
+#     catXtestEncoded = pd.DataFrame(encoder.transform(Xtest[catCols]))
 
-    # One-hot encoding removed index; put it back
-    catXtrainEncoded.index = Xtrain.index
-    catXtestEncoded.index = Xtest.index
+#     # One-hot encoding removed index; put it back
+#     catXtrainEncoded.index = Xtrain.index
+#     catXtestEncoded.index = Xtest.index
 
-    # XtrainEncoded.columns = Xtrain.columns
-    # XtestEncoded.columns= Xtest.columns
+#     # XtrainEncoded.columns = Xtrain.columns
+#     # XtestEncoded.columns= Xtest.columns
 
-    # Add one-hot encoded columns to other features
-    XtrainEncoded = pd.concat([Xtrain[otherCols], catXtrainEncoded], axis=1)
-    XtestEncoded = pd.concat([Xtest[otherCols], catXtestEncoded], axis=1)
+#     # Add one-hot encoded columns to other features
+#     XtrainEncoded = pd.concat([Xtrain[otherCols], catXtrainEncoded], axis=1)
+#     XtestEncoded = pd.concat([Xtest[otherCols], catXtestEncoded], axis=1)
 
-    # Ensure all columns have string type
-    XtrainEncoded.columns = XtrainEncoded.columns.astype(str)
-    XtestEncoded.columns = XtestEncoded.columns.astype(str)
+#     # Ensure all columns have string type
+#     XtrainEncoded.columns = XtrainEncoded.columns.astype(str)
+#     XtestEncoded.columns = XtestEncoded.columns.astype(str)
 
-    return XtrainEncoded, XtestEncoded
-
-
-def oe(Xtrain: pd.DataFrame | pd.Series, Xtest: pd.DataFrame | pd.Series, catCols: list | str | None = None, handle_unknown: str = 'error'):
-    '''
-    Applying Ordinal Encoder to categorical feature columns.
+#     return XtrainEncoded, XtestEncoded
 
 
-    We assume you've got the good columns to be ordinal encoded.
-    Bad columns mean the features in those, couldn't be found in validation/test dataframe.
-    '''
-    # Preprocess:
-    Xtrain,Xtest=todf(Xtrain),todf(Xtest) # test if these are DataFrame-Like
-    if catCols == None:
-        print(
-            "Warning: You didn't input argument {catcols}, so we select all object-type columns to be one-hot encoded.")
-        catCols = [col for col in Xtrain.columns if Xtrain[col].dtype == "object"]
-        # Would this work instead? >>>
-        # catCols = Xtrain.select_dtypes(include=object).columns
-
-    # Columns that can be safely ordinal encoded
-    goodCols = [col for col in catCols if set(
-        Xtest[col]).issubset(set(Xtrain[col]))]  # because sample elements from Xtest is possible not appearing in Xtrain!
-    badCols = list(set(catCols)-set(goodCols))
-    print(f'''
-    Columns that can fit ordinal encoder: {goodCols}
-    Columns that cannot fit ordinal encoder: {badCols}
-    ''')
-    encoder = OrdinalEncoder(handle_unknown=handle_unknown)
-    # !!! We cannot use encoder.transform for Xtest dataset, why?
-    XtrainEncoded = encoder.fit_transform(Xtrain)
-    XtestEncoded = encoder.fit_transform(Xtest)
-    return XtrainEncoded, XtestEncoded
+# def oe(Xtrain: pd.DataFrame | pd.Series, Xtest: pd.DataFrame | pd.Series, catCols: list | str | None = None, handle_unknown: str = 'error'):
+#     '''
+#     Applying Ordinal Encoder to categorical feature columns.
 
 
-def nunique(df: pd.DataFrame|pd.Series, catCols: list | str | None = None, sort: bool = False) -> dict[tuple]:
-    '''
-    Return a dict data structure, whose keys are the column name and whose values are the amount of the unique values.
-    '''
-    df=todf(df)
-    if type(catCols) == type(None):
-        print(
-            "Warning: You didn't input argument `catcols`, so we select all object-type columns.")
-        catCols = [col for col in df.columns if df[col].dtype == "object"]
-        # Would this work instead? >>>
-        # catCols = Xtrain.select_dtypes(include=object).columns
-    return {k: v for k, v in sorted(dict(zip(catCols, list(map(lambda col: df[col].nunique(), catCols)))).items(), key=lambda t: t[1])} if sort else dict(zip(catCols, list(map(lambda col: df[col].nunique(), catCols))))
+#     We assume you've got the good columns to be ordinal encoded.
+#     Bad columns mean the features in those, couldn't be found in validation/test dataframe.
+#     '''
+#     # Preprocess:
+#     # test if these are DataFrame-Like
+#     Xtrain, Xtest = todf(Xtrain), todf(Xtest)
+#     if catCols == None:
+#         print(
+#             "Warning: You didn't input argument `catcols`, so we select all object-type columns to be one-hot encoded.")
+#         catCols = [col for col in Xtrain.columns if Xtrain[col].dtype == "object"]
+#         # Would this work instead? >>>
+#         # catCols = Xtrain.select_dtypes(include=object).columns
 
-def getNanCols(df:pd.DataFrame|pd.Series,how:str="any"):
-    df=todf(df)
-    return eval(f"[col for col in df.columns if df[col].isnull().{how}()]")
+#     # Columns that can be safely ordinal encoded
+#     goodCols = [col for col in catCols if set(
+#         Xtest[col]).issubset(set(Xtrain[col]))]  # because sample elements from Xtest is possible not appearing in Xtrain!
+#     badCols = list(set(catCols)-set(goodCols))
+#     print(f'''
+#     Columns that can fit ordinal encoder: {goodCols}
+#     Columns that cannot fit ordinal encoder: {badCols}
+#     ''')
+#     encoder = OrdinalEncoder(handle_unknown=handle_unknown)
+#     # !!! We cannot use encoder.transform for Xtest dataset, why?
+#     XtrainEncoded = encoder.fit_transform(Xtrain)
+#     XtestEncoded = encoder.fit_transform(Xtest)
+#     return XtrainEncoded, XtestEncoded
+
+
+# def nunique(df: pd.DataFrame | pd.Series, catCols: list | str | None = None, sort: bool = False) -> dict[tuple]:
+#     '''
+#     Return a dict data structure, whose keys are the column name and whose values are the amount of the unique values.
+#     '''
+#     df = todf(df)
+#     if type(catCols) == type(None):
+#         print(
+#             "Warning: You didn't input argument `catcols`, so we select all object-type columns.")
+#         catCols = [col for col in df.columns if df[col].dtype == "object"]
+#         # Would this work instead? >>>
+#         # catCols = Xtrain.select_dtypes(include=object).columns
+#     return {k: v for k, v in sorted(dict(zip(catCols, list(map(lambda col: df[col].nunique(), catCols)))).items(), key=lambda t: t[1])} if sort else dict(zip(catCols, list(map(lambda col: df[col].nunique(), catCols))))
+
+
+# def getNanCols(df: pd.DataFrame | pd.Series, how: str = "any")->list:
+#     df = todf(df)
+#     print("STILL WORKING ON THE NAMEERROR BUG:df is not defined")
+#     # return eval(f"[col for col in df.columns if df[col].isnull().{how}()]")
+#     return [col for col in df.columns if getattr(df[col].isnull(), how)()]
 
 class Model():
-    def __init__(self, X: pd.DataFrame, y: pd.Series, model: str = 'RandomForestRegressor', test_size: float | int | None = None, train_size: float | int | None = None, random_state: int | None = None) -> None:
+    def __init__(self, X: pd.DataFrame, y: pd.Series, model: str | None = None, test_size: float | int | None = None, train_size: float | int | None = None, random_state: int | None = None) -> None:
         '''
         ```
         >>> from fynns_tool_model import *
@@ -297,18 +278,14 @@ class Model():
                   train_size=train_size, random_state=random_state)
 
     def __str__(self) -> str:
-        df = self._X
-        df[self._y.name] = self._y
-        return df.to_string()
+        return self._df.to_string()
 
     def __repr__(self) -> str:
-        df = self._X
-        df[self._y.name] = self._y
-        return df.to_string()
+        return self._df.to_string()
 
-    def init(self, X: pd.DataFrame, y: pd.Series, model: str = 'RandomForestRegressor', test_size: float | int | None = None, train_size: float | int | None = None, random_state: int | None = None):
+    def init(self, X: pd.DataFrame, y: pd.Series, model: str | None = None, train_size: float | int | None = None, test_size: float | int | None = None, random_state: int | None = None):
         '''
-        ★ Initalize all data.
+        ★ Initalize all data. Both suitable for constructing and updating values.
 
         ```
         >>> from fynns_tool_model import *
@@ -372,28 +349,51 @@ class Model():
         ```
         '''
         self._X = todf(X)
-        print("X updated.")
         self._y = toseries(y)
-        print("y updated.")
+        # !!! MUST SET .copy() !! Otherwise self._X will just set to df (whole dataframe) and idk why
+        dfcopy = self._X.copy()
+        dfcopy[self._y.name] = self._y
+        self._df = dfcopy
 
         self._Xtrain, self._Xtest, self._ytrain, self._ytest = train_test_split(
             X, y, train_size=train_size, test_size=test_size, random_state=random_state)
-        print("Train Test Splits updated.")
-        
-        self._model = model if type(model)==str else raiseTypeError(model, str)
-        print("Model updated.")
-
+        self._Xtrain, self._Xtest, self._ytrain, self._ytest = todf(self._Xtrain), todf(
+            self._Xtest), toseries(self._ytrain), toseries(self._ytest)
+        if model == None:
+            print(
+                "Model has automatically set to RandomForestRegressor since you didn't input model name.")
+            self._model = 'RandomForestRegressor'
+        else:  # user has given a model argument
+            self._model = model if type(
+                model) == str else raiseTypeError(model, str)
+        self._categoricalCols = list(self._df.select_dtypes(
+            include=["object"]).columns)# or [col for col in df.columns if df[col].dtype=='object']
+        self._numericCols = list(self._df.select_dtypes(exclude=["object"]).columns)
+        self._colsContainNaN = [
+            col for col in dfcopy.columns if dfcopy[col].isnull().any()]
+        # delete dfcopy, although local. USE FOR OUTPUTTING LOG (attrNames)
+        del dfcopy
         self._mae = 0  # Mean Absolute Error score
+
+        # pop out these names we don't expect: 'self','attrNames','attr'
+        attrNames = list(self.init.__code__.co_varnames)[1:-2]
+        # print(attrNames)
+        for attr in attrNames:
+            # if user DID given these values to the corresponding arguments in .init()/__init__() constructing/updating methode
+            if type(eval(attr)) != type(None):
+                print(attr, "initiallized/updated.")
 
     def _validateParam(self) -> None:
         ...
 
     def info(self) -> None:
-        attrs = self.__dict__
-        for k, v in attrs.items():
+        for attr, v in self.__dict__.items():
             print(
-                f"==========================================\n{k.strip('_')}:\n---------------------\n{v}\n")
+                f"==========================================\n{attr.strip('_')}:\n---------------------\n{v}\n")
         print("==========================================")
+
+    def getdf(self) -> pd.DataFrame:
+        return self._df
 
     def getXy(self) -> tuple[pd.DataFrame, pd.Series]:
         return self._X, self._y
@@ -401,7 +401,7 @@ class Model():
     def getTrainTest(self) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
         return self._Xtrain, self._Xtest, self._ytrain, self._ytest
 
-    def update(self, **kwargs) -> None:
+    def _update(self, **kwargs) -> None:
         '''
         You can literaly update any EXISTED attribute you want.
 
@@ -476,7 +476,7 @@ class Model():
             exec(f"self._{k}=v")
             print("Attribute", k, "updated.")
 
-    def mae(self, inplace: bool = False, **kwargs):
+    def mae(self, random_state: int | None = None, inplace: bool = False, **kwargs):
         model = self._model
         Xtrain, Xtest, ytrain, ytest = self._Xtrain, self._Xtest, self._ytrain, self._ytest
         # building up the code
@@ -486,6 +486,7 @@ class Model():
             argsComm += f"{v},"
         argsComm += "random_state=random_state)"
         m = eval(f"{model}{argsComm}")
+        # !!! Avoid using eval and getattr for dynamic code execution: Instead of dynamically constructing and executing code strings, it's generally safer and more readable to directly call the methods and classes.
         try:
             m.fit(Xtrain, ytrain)
         except NameError:
@@ -501,7 +502,7 @@ class Model():
             self._mae = score
         return score
 
-    def ohe(self, catCols: list | str | None = None, handle_unknown: str = 'ignore', sparse: bool = False, inplace: bool = False, **kwargs) -> tuple[pd.DataFrame, pd.Series]:
+    def ohe(self, catCols: list | str | None = None, handle_unknown: str = 'ignore', sparse: bool = False, inplace: bool = False, **kwargs) -> None|tuple[pd.DataFrame, pd.Series]:
         '''
         Return encoded categorical features DataFrame with OneHotEncoder.
 
@@ -543,16 +544,20 @@ class Model():
         NOTE: Those Features whose cardinality low is, are fit to preprocess with OneHotEncoder.
         Otherwise it's ok to use OrdinalEncoder
         '''
-        Xtrain, Xtest = self._Xtrain, self._Xtest
+        if not self._categoricalCols: # There is no categorical columns in this dataset.
+            print("There is no categorical columns in this dataset.\n So you don't need Encoder.")
+            return
+        df, Xtrain, Xtest = self._df, self._Xtrain, self._Xtest
         if catCols == None:
             print(
                 "Warning: You didn't input argument `catcols`, so we select all object-type columns to be one-hot encoded.")
-            catCols = Xtrain.select_dtypes(include=object).columns
-        otherCols = list(set(Xtrain.columns)-set(catCols))
+            catCols = self._categoricalCols
+        # uncategorical columns
+        otherCols = list(set(df.columns)-set(catCols))
         # Apply one-hot encoder to each column with categorical data
-        print("All Columns:", list(Xtrain.columns))
+        print("All Columns:", list(df.columns))
         print("Categorical Columns:", list(catCols))
-        print("Other Columns:", otherCols)
+        print("Other Columns (non-categorical):", otherCols)
         encoder = OneHotEncoder(
             handle_unknown=handle_unknown, sparse_output=sparse)
         catXtrainEncoded = todf(encoder.fit_transform(Xtrain[catCols]))
@@ -579,7 +584,7 @@ class Model():
 
         return XtrainEncoded, XtestEncoded
 
-    def oe(self, catCols: list | str | None = None, handle_unknown: str = 'error', inplace: bool = False):
+    def oe(self, catCols: list | str | None = None, handle_unknown: str = 'error', inplace: bool = False) -> tuple[pd.DataFrame, pd.DataFrame]|None:
         '''
         Applying Ordinal Encoder to categorical feature columns.
 
@@ -587,24 +592,29 @@ class Model():
         We assume you've got the good columns to be ordinal encoded.
         Bad columns mean the features in those, couldn't be found in validation/test dataframe.
         '''
-        Xtrain, Xtest = self._Xtrain, self._Xtest
+        if not self._categoricalCols: # There is no categorical columns in this dataset.
+            print("There is no categorical columns in this dataset.\n So you don't need Encoder.")
+            return
+        df, Xtrain, Xtest = self._df, self._Xtrain, self._Xtest
         # Preprocess:
         if catCols == None:
             print(
                 "Warning: You didn't input argument `catcols`, so we select all object-type columns to be ordinal encoded.")
-            catCols = [
-                col for col in Xtrain.columns if Xtrain[col].dtype == "object"]
+            catCols = self._categoricalCols
+
             # Would this work instead? >>>
-            # catCols = Xtrain.select_dtypes(include=object).columns
-        otherCols = list(set(Xtrain.columns)-set(catCols))
+            # catCols = df.select_dtypes(include=object).columns
+
+        # uncategorical columns
+        otherCols = list(set(df.columns)-set(catCols))
         # Columns that can be safely ordinal encoded
         goodCols = [col for col in catCols if set(
             Xtest[col]).issubset(set(Xtrain[col]))]  # because sample elements from Xtest is possible not appearing in Xtrain!
         badCols = list(set(catCols)-set(goodCols))
         print(f'''
-        All columns: {list(Xtrain.columns)}
-        Columns that can fit ordinal encoder: {goodCols}
-        Columns that cannot fit ordinal encoder: {badCols}
+        All columns: {list(df.columns)}
+        Categorical Columns that can fit ordinal encoder: {goodCols}
+        Categorical Columns that cannot fit ordinal encoder: {badCols}
         Other columns (non categorical): {otherCols}
         ''')
         encoder = OrdinalEncoder(handle_unknown=handle_unknown)
@@ -612,9 +622,27 @@ class Model():
         XtrainEncoded = encoder.fit_transform(Xtrain)
         XtestEncoded = encoder.fit_transform(Xtest)
         if inplace:
+            print("Note: inplace=True will only affect _Xtrain and _Xtest.")
             self._Xtrain, self._Xtest = XtrainEncoded, XtestEncoded
 
         return XtrainEncoded, XtestEncoded
+
+    def impute(self, inplace: bool = False) -> tuple[pd.DataFrame, pd.DataFrame]:
+        '''
+        Impute Xtrain and Xcols, as in handeling missing values. (np.nan,Null)
+        '''
+        Xtrain, Xtest, colsContainNaN, numCols = self._Xtrain, self._Xtest, self._colsContainNaN, self._numericCols
+        # columns who both contain NaN and also numeric
+        numNanCols = list(set(colsContainNaN).intersection(numCols))
+        print("Columns who both contain NaN and also numeric:", numNanCols)
+        XtrainNumNan, XtestNumNan = Xtrain[numNanCols], Xtest[numNanCols]
+        si = SimpleImputer()
+        imputedXtrain = pd.DataFrame(si.fit_transform(XtrainNumNan))
+        imputedXtest = pd.DataFrame(si.transform(XtestNumNan))
+        if inplace:
+            print("Note: inplace=True will only affect _Xtrain and _Xtest.")
+            self._Xtrain, self._Xtest = imputedXtrain, imputedXtest
+        return imputedXtrain, imputedXtest
 
 
 if __name__ == "__main__":
