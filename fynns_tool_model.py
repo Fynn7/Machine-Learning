@@ -14,7 +14,7 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.preprocessing import OrdinalEncoder, OneHotEncoder
 
 
-def raiseTypeError(arg: object, shouldBe: type | object) -> None:
+def raiseTypeError(arg: object, shouldBe: type | object,origErrMsg:str|None=None) -> None:
     '''
     Should finally switch to InvalidParameterError,
     and written inside class as a methode
@@ -22,8 +22,10 @@ def raiseTypeError(arg: object, shouldBe: type | object) -> None:
 
     See: `InvalidErrorSample.txt` under this folder
     '''
-    raise TypeError(
-        f'【{arg}】 should be 【{shouldBe}】, not 【{type(arg)}.】')
+    errmsg=f'【{arg}】 should be 【{shouldBe}】, not 【{type(arg)}.】'
+    if origErrMsg:
+        errmsg+=f"Original Error Message: {str(origErrMsg)}"
+    raise TypeError(errmsg)
 
 
 def todf(l: list | pd.DataFrame | pd.Series) -> pd.DataFrame:
@@ -249,8 +251,9 @@ def toseries(l: list | pd.DataFrame | pd.Series) -> pd.DataFrame:
 #     # return eval(f"[col for col in df.columns if df[col].isnull().{how}()]")
 #     return [col for col in df.columns if getattr(df[col].isnull(), how)()]
 
+
 class Model():
-    def __init__(self, X: pd.DataFrame, y: pd.Series, model: str | None = None, test_size: float | int | None = None, train_size: float | int | None = None, random_state: int | None = None) -> None:
+    def __init__(self, X: pd.DataFrame, y: pd.Series, model: str | None = None, test_size: float | int | None = None, train_size: float | int | None = None, random_state: int | None = None,**modelArgs) -> None:
         '''
         ```
         >>> from fynns_tool_model import *
@@ -274,8 +277,8 @@ class Model():
         Name: color, dtype: object)
         ```
         '''
-        self.init(X, y, model, test_size=test_size,
-                  train_size=train_size, random_state=random_state)
+        self.init(X, y, model=model, test_size=test_size,
+                  train_size=train_size, random_state=random_state,**modelArgs)
 
     def __str__(self) -> str:
         return self._df.to_string()
@@ -283,10 +286,12 @@ class Model():
     def __repr__(self) -> str:
         return self._df.to_string()
 
-    def init(self, X: pd.DataFrame, y: pd.Series, model: str | None = None, train_size: float | int | None = None, test_size: float | int | None = None, random_state: int | None = None):
+    def init(self, X: pd.DataFrame, y: pd.Series, model: str | None = None, train_size: float | int | None = None, test_size: float | int | None = None, random_state: int | None = None,**modelArgs):
         '''
         ★ Initalize all data. Both suitable for constructing and updating values.
 
+        Args:
+        **modelArgs: if inputted wrong args for the model, an custom exception is raised
         ```
         >>> from fynns_tool_model import *
         >>> df = pd.DataFrame({'taste': ['Sweet', 'Sweet', 'Sour', 'Sweet', 'Sour'], 'size': [
@@ -366,14 +371,17 @@ class Model():
         else:  # user has given a model argument
             self._model = model if type(
                 model) == str else raiseTypeError(model, str)
+        self._modelArgs=modelArgs # !!!Attribute self._modelArgs USE ONLY FOR .info(), not for **modelArgs argument(implementing on other methodes). **modelArgs, aka new input, has higher priority. It's just like other methodes, we make a copy(local var) for self._XXX (private attribute) in almost every methodes. And we would like to delete it before the methode ends, if necessary. 
         self._categoricalCols = list(self._df.select_dtypes(
-            include=["object"]).columns)# or [col for col in df.columns if df[col].dtype=='object']
-        self._numericCols = list(self._df.select_dtypes(exclude=["object"]).columns)
+            include=["object"]).columns)  # or [col for col in df.columns if df[col].dtype=='object']
+        self._numericCols = list(
+            self._df.select_dtypes(exclude=["object"]).columns)
         self._colsContainNaN = [
             col for col in dfcopy.columns if dfcopy[col].isnull().any()]
         # delete dfcopy, although local. USE FOR OUTPUTTING LOG (attrNames)
         del dfcopy
-        self._mae = 0  # Mean Absolute Error score
+        # Mean Absolute Error score
+        self._mae = self.mae(random_state=random_state,**modelArgs)
 
         # pop out these names we don't expect: 'self','attrNames','attr'
         attrNames = list(self.init.__code__.co_varnames)[1:-2]
@@ -476,16 +484,19 @@ class Model():
             exec(f"self._{k}=v")
             print("Attribute", k, "updated.")
 
-    def mae(self, random_state: int | None = None, inplace: bool = False, **kwargs):
+    def mae(self, random_state: int | None = None, inplace: bool = False, **modelArgs):
         model = self._model
         Xtrain, Xtest, ytrain, ytest = self._Xtrain, self._Xtest, self._ytrain, self._ytest
         # building up the code
         argsComm = "("
-        for k, v in kwargs.items():  # extra parameters for the model object itself
+        for k, v in modelArgs.items():  # extra parameters for the model object itself
             argsComm += f"{k}="
             argsComm += f"{v},"
         argsComm += "random_state=random_state)"
-        m = eval(f"{model}{argsComm}")
+        try:
+            m = eval(f"{model}{argsComm}")
+        except TypeError as e:
+            raise Exception(f'Some arguments not found. \nOriginal Error Message:\n【{e}】')
         # !!! Avoid using eval and getattr for dynamic code execution: Instead of dynamically constructing and executing code strings, it's generally safer and more readable to directly call the methods and classes.
         try:
             m.fit(Xtrain, ytrain)
@@ -495,14 +506,14 @@ class Model():
         score = mean_absolute_error(ytest, p)
         print(f'''
         Model: {model}
-        Model Arguments: {kwargs}
+        Model Arguments: {modelArgs}
         MAE Score: {score}
             ''')
         if inplace:
             self._mae = score
         return score
 
-    def ohe(self, catCols: list | str | None = None, handle_unknown: str = 'ignore', sparse: bool = False, inplace: bool = False, **kwargs) -> None|tuple[pd.DataFrame, pd.Series]:
+    def ohe(self, catCols: list | str | None = None, handle_unknown: str = 'ignore', sparse: bool = False, inplace: bool = False, **kwargs) -> None | tuple[pd.DataFrame, pd.Series]:
         '''
         Return encoded categorical features DataFrame with OneHotEncoder.
 
@@ -544,8 +555,9 @@ class Model():
         NOTE: Those Features whose cardinality low is, are fit to preprocess with OneHotEncoder.
         Otherwise it's ok to use OrdinalEncoder
         '''
-        if not self._categoricalCols: # There is no categorical columns in this dataset.
-            print("There is no categorical columns in this dataset.\n So you don't need Encoder.")
+        if not self._categoricalCols:  # There is no categorical columns in this dataset.
+            print(
+                "There is no categorical columns in this dataset.\n So you don't need Encoder.")
             return
         df, Xtrain, Xtest = self._df, self._Xtrain, self._Xtest
         if catCols == None:
@@ -584,7 +596,7 @@ class Model():
 
         return XtrainEncoded, XtestEncoded
 
-    def oe(self, catCols: list | str | None = None, handle_unknown: str = 'error', inplace: bool = False) -> tuple[pd.DataFrame, pd.DataFrame]|None:
+    def oe(self, catCols: list | str | None = None, handle_unknown: str = 'error', inplace: bool = False) -> tuple[pd.DataFrame, pd.DataFrame] | None:
         '''
         Applying Ordinal Encoder to categorical feature columns.
 
@@ -592,8 +604,9 @@ class Model():
         We assume you've got the good columns to be ordinal encoded.
         Bad columns mean the features in those, couldn't be found in validation/test dataframe.
         '''
-        if not self._categoricalCols: # There is no categorical columns in this dataset.
-            print("There is no categorical columns in this dataset.\n So you don't need Encoder.")
+        if not self._categoricalCols:  # There is no categorical columns in this dataset.
+            print(
+                "There is no categorical columns in this dataset.\n So you don't need Encoder.")
             return
         df, Xtrain, Xtest = self._df, self._Xtrain, self._Xtest
         # Preprocess:
