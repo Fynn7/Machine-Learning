@@ -12,9 +12,10 @@ from sklearn.impute import SimpleImputer
 from sklearn.metrics import mean_absolute_error
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.preprocessing import OrdinalEncoder, OneHotEncoder
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
 
-
-def raiseTypeError(arg: object, shouldBe: type | object,origErrMsg:str|None=None) -> None:
+def raiseTypeError(arg: object, shouldBe: type | object, origErrMsg: str | None = None) -> None:
     '''
     Should finally switch to InvalidParameterError,
     and written inside class as a methode
@@ -22,9 +23,9 @@ def raiseTypeError(arg: object, shouldBe: type | object,origErrMsg:str|None=None
 
     See: `InvalidErrorSample.txt` under this folder
     '''
-    errmsg=f'【{arg}】 should be 【{shouldBe}】, not 【{type(arg)}.】'
+    errmsg = f'【{arg}】 should be 【{shouldBe}】, not 【{type(arg)}.】'
     if origErrMsg:
-        errmsg+=f"Original Error Message: {str(origErrMsg)}"
+        errmsg += f"Original Error Message: {str(origErrMsg)}"
     raise TypeError(errmsg)
 
 
@@ -253,7 +254,7 @@ def toseries(l: list | pd.DataFrame | pd.Series) -> pd.DataFrame:
 
 
 class Model():
-    def __init__(self, X: pd.DataFrame, y: pd.Series, model: str | None = None, test_size: float | int | None = None, train_size: float | int | None = None, random_state: int | None = None,**modelArgs) -> None:
+    def __init__(self, X: pd.DataFrame, y: pd.Series, model: str | None = None, train_size: float | int | None = None, test_size: float | int | None = None, random_state: int | None = None, **modelArgs) -> None:
         '''
         ```
         >>> from fynns_tool_model import *
@@ -277,8 +278,8 @@ class Model():
         Name: color, dtype: object)
         ```
         '''
-        self.init(X, y, model=model, test_size=test_size,
-                  train_size=train_size, random_state=random_state,**modelArgs)
+        self.init(X, y, model=model, train_size=train_size,
+                  test_size=test_size, random_state=random_state, **modelArgs)
 
     def __str__(self) -> str:
         return self._df.to_string()
@@ -286,7 +287,7 @@ class Model():
     def __repr__(self) -> str:
         return self._df.to_string()
 
-    def init(self, X: pd.DataFrame, y: pd.Series, model: str | None = None, train_size: float | int | None = None, test_size: float | int | None = None, random_state: int | None = None,**modelArgs):
+    def init(self, X: pd.DataFrame, y: pd.Series, model: str | None = None, train_size: float | int | None = None, test_size: float | int | None = None, random_state: int | None = None, **modelArgs):
         '''
         ★ Initalize all data. Both suitable for constructing and updating values.
 
@@ -371,7 +372,7 @@ class Model():
         else:  # user has given a model argument
             self._model = model if type(
                 model) == str else raiseTypeError(model, str)
-        self._modelArgs=modelArgs # !!!Attribute self._modelArgs USE ONLY FOR .info(), not for **modelArgs argument(implementing on other methodes). **modelArgs, aka new input, has higher priority. It's just like other methodes, we make a copy(local var) for self._XXX (private attribute) in almost every methodes. And we would like to delete it before the methode ends, if necessary. 
+        self._modelArgs = modelArgs  # !!!Attribute self._modelArgs USE ONLY FOR .info(), not for **modelArgs argument(implementing on other methodes). **modelArgs, aka new input, has higher priority. It's just like other methodes, we make a copy(local var) for self._XXX (private attribute) in almost every methodes. And we would like to delete it before the methode ends, if necessary.
         self._categoricalCols = list(self._df.select_dtypes(
             include=["object"]).columns)  # or [col for col in df.columns if df[col].dtype=='object']
         self._numericCols = list(
@@ -381,7 +382,7 @@ class Model():
         # delete dfcopy, although local. USE FOR OUTPUTTING LOG (attrNames)
         del dfcopy
         # Mean Absolute Error score
-        self._mae = self.mae(random_state=random_state,**modelArgs)
+        self._mae = self.mae(random_state=random_state, **modelArgs)
 
         # pop out these names we don't expect: 'self','attrNames','attr'
         attrNames = list(self.init.__code__.co_varnames)[1:-2]
@@ -408,6 +409,24 @@ class Model():
 
     def getTrainTest(self) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
         return self._Xtrain, self._Xtest, self._ytrain, self._ytest
+
+    def getModel(self) -> str:
+        return self._model
+
+    def getModelArgs(self) -> dict:
+        return self._modelArgs
+
+    def getMaeScore(self) -> float:
+        return self._mae
+
+    def getCategoricalCols(self) -> list:
+        return self._categoricalCols
+
+    def getNumericalCols(self) -> list:
+        return self._numericCols
+
+    def getColsContainNaN(self) -> list:
+        return self._colsContainNaN
 
     def _update(self, **kwargs) -> None:
         '''
@@ -487,7 +506,7 @@ class Model():
     def mae(self, random_state: int | None = None, inplace: bool = False, **modelArgs):
         model = self._model
         Xtrain, Xtest, ytrain, ytest = self._Xtrain, self._Xtest, self._ytrain, self._ytest
-        # building up the code
+        # building up the code(MODEL_NAME(ARG1=VAL1,ARG2=VAL2,...))
         argsComm = "("
         for k, v in modelArgs.items():  # extra parameters for the model object itself
             argsComm += f"{k}="
@@ -495,11 +514,12 @@ class Model():
         argsComm += "random_state=random_state)"
         try:
             m = eval(f"{model}{argsComm}")
-        except TypeError as e:
-            raise Exception(f'Some arguments not found. \nOriginal Error Message:\n【{e}】')
+        except TypeError as e:  # if the correct arguments are given to the corresponding model
+            raise Exception(
+                f'Some arguments not found. \nOriginal Error Message:\n【{e}】')
         # !!! Avoid using eval and getattr for dynamic code execution: Instead of dynamically constructing and executing code strings, it's generally safer and more readable to directly call the methods and classes.
         try:
-            m.fit(Xtrain, ytrain)
+            m.fit(Xtrain, ytrain)  # if the correct model name is given
         except NameError:
             raise NameError(f"Model name `{model}` not found.")
         p = m.predict(Xtest)
@@ -555,7 +575,7 @@ class Model():
         NOTE: Those Features whose cardinality low is, are fit to preprocess with OneHotEncoder.
         Otherwise it's ok to use OrdinalEncoder
         '''
-        if not self._categoricalCols:  # There is no categorical columns in this dataset.
+        if not self._categoricalCols:  # If there is no categorical columns in this dataset.
             print(
                 "There is no categorical columns in this dataset.\n So you don't need Encoder.")
             return
@@ -647,6 +667,10 @@ class Model():
         Xtrain, Xtest, colsContainNaN, numCols = self._Xtrain, self._Xtest, self._colsContainNaN, self._numericCols
         # columns who both contain NaN and also numeric
         numNanCols = list(set(colsContainNaN).intersection(numCols))
+        if not numNanCols:
+            print(
+                "There is no columns who both contain NaN and also numeric.\n Don't need to be imputed.")
+            return
         print("Columns who both contain NaN and also numeric:", numNanCols)
         XtrainNumNan, XtestNumNan = Xtrain[numNanCols], Xtest[numNanCols]
         si = SimpleImputer()
@@ -657,7 +681,13 @@ class Model():
             self._Xtrain, self._Xtest = imputedXtrain, imputedXtest
         return imputedXtrain, imputedXtest
 
+    def pipeline(self)->Pipeline:
+        pass
 
+    def crossValidation(self)->...:
+        pass
+
+    
 if __name__ == "__main__":
     # def clear_last_line():
     #     sys.stdout.write('\x1b[1A')  # Move cursor up one line
