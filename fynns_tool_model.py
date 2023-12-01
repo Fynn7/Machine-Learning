@@ -15,6 +15,7 @@ from sklearn.preprocessing import OrdinalEncoder, OneHotEncoder
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 
+
 def raiseTypeError(arg: object, shouldBe: type | object, origErrMsg: str | None = None) -> None:
     '''
     Should finally switch to InvalidParameterError,
@@ -382,8 +383,11 @@ class Model():
         # delete dfcopy, although local. USE FOR OUTPUTTING LOG (attrNames)
         del dfcopy
         # Mean Absolute Error score
-        self._mae = self.mae(random_state=random_state, **modelArgs)
-
+        try:# in case the data is not clean.
+            self._mae = self.mae(random_state=random_state, **modelArgs)
+        except Exception:
+            print("The Data Is Not Clean. Set mae score to 0.")
+            self._mae=0
         # pop out these names we don't expect: 'self','attrNames','attr'
         attrNames = list(self.init.__code__.co_varnames)[1:-2]
         # print(attrNames)
@@ -680,14 +684,78 @@ class Model():
             print("Note: inplace=True will only affect _Xtrain and _Xtest.")
             self._Xtrain, self._Xtest = imputedXtrain, imputedXtest
         return imputedXtrain, imputedXtest
+    
+    # -----------------------------------------------------------------------------------------------------------------------------------
+    # Methods without interacting(not changing values, only passing values of attributes to the corresp. methods ) with class attributes
+
+    def transformNumCols(self, strategy: str = 'constant') -> SimpleImputer:
+        '''
+        We just need to impute the missing values from num cols.
+
+        ```
+        >>> 
+        ```
+        '''
+        return SimpleImputer(strategy=strategy)
+
+    def transformCatCols(self, imputeStrategy: str = 'most_frequent', encoder: str = 'OneHotEncoder', **encoderArgs) -> Pipeline:
+        argsComm = "("
+        for k, v in encoderArgs.items():  # extra parameters for the model object itself
+            argsComm += f"{k}="
+            argsComm += f"{v},"
+        argsComm += ")"
+        try:
+            return Pipeline(steps=[
+                ('imputer', SimpleImputer(strategy=imputeStrategy)),
+                (encoder, eval(f"{encoder}{argsComm}"))])
+        except TypeError as e:  # if the correct arguments are given to the corresponding model
+            raise Exception(
+                f'Some arguments not found. \nOriginal Error Message:\n【{e}】')
+        # !!! Avoid using eval and getattr for dynamic code execution: Instead of dynamically constructing and executing code strings, it's generally safer and more readable to directly call the methods and classes.
+
+
+    def preprocessor(self) -> ColumnTransformer:
+        '''
+        Return a ColumnTransformer for preprocessing (preprocess to handle-able data, aka. numbers).
+        '''
+        numCols,catCols = self._numericCols,self._categoricalCols
+        numColTransformer,catColTransformer=self.transformNumCols(),self.transformCatCols()
+        return ColumnTransformer(
+            transformers=[
+                ('numerical Transformer', numColTransformer, numCols),
+                ('categorical Transformer', catColTransformer, catCols)
+            ])
 
     def pipeline(self)->Pipeline:
+        '''
+        Bundle preprocessing and modeling code in a pipeline
+        Return model with full steps of preprocessing+model
+
+        ```
+        ```
+        '''
+        model,modelArgs=self._model,self._modelArgs
+        argsComm = "("
+        preprocessor=self.preprocessor()
+        for k, v in modelArgs.items():  # extra parameters for the model object itself
+            argsComm += f"{k}="
+            argsComm += f"{v},"
+        argsComm += ")"
+        try:
+
+            return Pipeline(steps=[('preprocessor', preprocessor),
+                              ('model', eval(f"{model}{argsComm}"))
+                             ])
+
+        except TypeError as e:  # if the correct arguments are given to the corresponding model
+            raise Exception(
+                f'Some arguments not found. \nOriginal Error Message:\n【{e}】')
+        # !!! Avoid using eval and getattr for dynamic code execution: Instead of dynamically constructing and executing code strings, it's generally safer and more readable to directly call the methods and classes.
+
+    def crossValidation(self) -> ...:
         pass
 
-    def crossValidation(self)->...:
-        pass
 
-    
 if __name__ == "__main__":
     # def clear_last_line():
     #     sys.stdout.write('\x1b[1A')  # Move cursor up one line
