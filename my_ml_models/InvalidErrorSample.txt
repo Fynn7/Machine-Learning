@@ -1,0 +1,73 @@
+---------------------------------------------------------------------------
+InvalidParameterError                     Traceback (most recent call last)
+Cell In[38], line 31
+     28     XtestEncoded = encoder.fit_transform(Xtest)
+     29     return XtrainEncoded, XtestEncoded
+---> 31 oe(X_train,X_valid)[0]
+
+Cell In[38], line 27, in oe(Xtrain, Xtest, catCols, handle_unknown)
+     25 encoder = OrdinalEncoder(handle_unknown=handle_unknown)
+     26 # !!! We cannot use encoder.transform for Xtest dataset, why?
+---> 27 XtrainEncoded = encoder.fit_transform(Xtrain)
+     28 XtestEncoded = encoder.fit_transform(Xtest)
+     29 return XtrainEncoded, XtestEncoded
+
+File /opt/conda/lib/python3.10/site-packages/sklearn/utils/_set_output.py:140, in _wrap_method_output.<locals>.wrapped(self, X, *args, **kwargs)
+    138 @wraps(f)
+    139 def wrapped(self, X, *args, **kwargs):
+--> 140     data_to_wrap = f(self, X, *args, **kwargs)
+    141     if isinstance(data_to_wrap, tuple):
+    142         # only wrap the first output for cross decomposition
+    143         return (
+    144             _wrap_data_with_container(method, data_to_wrap[0], X, self),
+    145             *data_to_wrap[1:],
+    146         )
+
+File /opt/conda/lib/python3.10/site-packages/sklearn/base.py:878, in TransformerMixin.fit_transform(self, X, y, **fit_params)
+    874 # non-optimized default implementation; override when a better
+    875 # method is possible for a given clustering algorithm
+    876 if y is None:
+    877     # fit method of arity 1 (unsupervised transformation)
+--> 878     return self.fit(X, **fit_params).transform(X)
+    879 else:
+    880     # fit method of arity 2 (supervised transformation)
+    881     return self.fit(X, y, **fit_params).transform(X)
+
+File /opt/conda/lib/python3.10/site-packages/sklearn/preprocessing/_encoders.py:1278, in OrdinalEncoder.fit(self, X, y)
+   1260 def fit(self, X, y=None):
+   1261     """
+   1262     Fit the OrdinalEncoder to X.
+   1263 
+   (...)
+   1276         Fitted encoder.
+   1277     """
+-> 1278     self._validate_params()
+   1280     if self.handle_unknown == "use_encoded_value":
+   1281         if is_scalar_nan(self.unknown_value):
+
+File /opt/conda/lib/python3.10/site-packages/sklearn/base.py:600, in BaseEstimator._validate_params(self)
+    592 def _validate_params(self):
+    593     """Validate types and values of constructor parameters
+    594 
+    595     The expected type and values must be defined in the `_parameter_constraints`
+   (...)
+    598     accepted constraints.
+    599     """
+--> 600     validate_parameter_constraints(
+    601         self._parameter_constraints,
+    602         self.get_params(deep=False),
+    603         caller_name=self.__class__.__name__,
+    604     )
+
+File /opt/conda/lib/python3.10/site-packages/sklearn/utils/_param_validation.py:97, in validate_parameter_constraints(parameter_constraints, params, caller_name)
+     91 else:
+     92     constraints_str = (
+     93         f"{', '.join([str(c) for c in constraints[:-1]])} or"
+     94         f" {constraints[-1]}"
+     95     )
+---> 97 raise InvalidParameterError(
+     98     f"The {param_name!r} parameter of {caller_name} must be"
+     99     f" {constraints_str}. Got {param_val!r} instead."
+    100 )
+
+InvalidParameterError: The 'handle_unknown' parameter of OrdinalEncoder must be a str among {'use_encoded_value', 'error'}. Got None instead.
