@@ -66,8 +66,8 @@ def buildModelComm(args: dict, prefix: str = "", suffix: str = "") -> str:
 
 
 class Model:
-    def __init__(self, X: pd.DataFrame, y: pd.Series, model: str | None = None, encoder: str | None = None,train_size: float | int | None = None, test_size: float | int | None = None, random_state: int | None = None, scoreIt: bool | None = None, modelArgs: dict | None = None, encoderArgs: dict | None = None) -> None:
-        self.init(X=X, y=y, model=model,encoder=encoder, train_size=train_size,
+    def __init__(self, X: pd.DataFrame, y: pd.Series, model: str | None = None, encoder: str | None = None, train_size: float | int | None = None, test_size: float | int | None = None, random_state: int | None = None, scoreIt: bool | None = None, modelArgs: dict | None = None, encoderArgs: dict | None = None) -> None:
+        self.init(X=X, y=y, model=model, encoder=encoder, train_size=train_size,
                   test_size=test_size, random_state=random_state, scoreIt=scoreIt, modelArgs=modelArgs, encoderArgs=encoderArgs)
 
     def __str__(self) -> str:
@@ -235,7 +235,7 @@ class Model:
         ```
         '''
         # df, X, y, Xtrain, Xtest, ytrain, ytest, allCatCols, nanCols = self._df, self._X, self._y, self._Xtrain, self._Xtest, self._ytrain, self._ytest, self._catCols, self._nanCols
-        encoder,encoderArgs=self._encoder,self._encoderArgs
+        encoder, encoderArgs = self._encoder, self._encoderArgs
         # Create pipeline for imputing & encoding
         argsComm = buildModelComm(
             encoderArgs, prefix=f"{encoder}(", suffix=')')
@@ -299,7 +299,7 @@ class Model:
         ''')
         return SimpleImputer(strategy=strategy)
 
-    def preprocess(self,numColTransformer: SimpleImputer, catColTransformer: Pipeline) -> ColumnTransformer:
+    def preprocess(self, numColTransformer: SimpleImputer, catColTransformer: Pipeline) -> ColumnTransformer:
         '''
         >>> from fynns_tool_model_v1 import *
         >>> df = pd.DataFrame({ 'color': ['Red', 'Green', 'Green','Green', 'Red', 'Green'],'taste': ['Sweet', np.nan,'Sweet', 'Sour', 'Sweet','Sour'], 'size': [
@@ -325,13 +325,13 @@ class Model:
         >>> X=m.getXy()[0]
         >>> nct,cct=m.transformNumCols(),m.transformCatCols()
         >>> m.preprocess(nct,cct).fit_transform(X)
-        
+
         Transform Imputer Strategy: mean
 
         Transform Imputer Strategy: most_frequent
         Transform Encoder: OrdinalEncoder
         Encoder Arguments: {}   
-                
+
         array([[7. , 1. , 0. ],
             [8. , 1. , 0. ],
             [2. , 1. , 2. ],
@@ -339,40 +339,68 @@ class Model:
             [4. , 1. , 0. ],
             [2. , 0. , 2. ]])
         '''
-        numColsX,catColsX=self._numColsX,self._catColsX
+        numColsX, catColsX = self._numColsX, self._catColsX
         return ColumnTransformer(
             transformers=[
                 ('numerical Transformer', numColTransformer, numColsX),
                 ('categorical Transformer', catColTransformer, catColsX)
             ])
 
-    def pipeline(self,preprocessor: ColumnTransformer) -> Pipeline:
+    def pipeline(self, preprocessor: ColumnTransformer) -> Pipeline:
         '''
         Bundle preprocessing and modeling for in a pipeline for DIRECTLY TRAINING DATA.
 
-        Only fit for regression problems.
+        Only fit for regression problems. (aka. target series should be continuous and numerical.)
         ```
+        >>> from fynns_tool_model_v1 import *
+        >>> df = pd.DataFrame({ 'color': ['Red', 'Green', 'Green','Green', 'Red', 'Green'],'taste': ['Sweet', np.nan,'Sweet', 'Sour', 'Sweet','Sour'], 'size': [
+        >>>                 'Big', 'Big', 'Small', 'Medium',np.nan, 'Small'], 'int_size': [7, 8, 2, 5,4, 2]})
+        >>> Xcols = list(set(df.columns)-set(['int_size']))
+        >>> m = Model(df[Xcols],df['int_size'],modelArgs={'n_estimators':100})
+        >>> m
+
+        Model set to `RandomForestRegressor` since no input for argument `model`.
+        Model set to `OrdinalEncoder` since no input for argument `model`.
+        X initiallized/updated.
+        y initiallized/updated.
+        modelArgs initiallized/updated.
+            size  color  taste  int_size
+        0     Big    Red  Sweet         7
+        1     Big  Green    NaN         8
+        2   Small  Green  Sweet         2
+        3  Medium  Green   Sour         5
+        4     NaN    Red  Sweet         4
+        5   Small  Green   Sour         2
+
+
         >>> X,y=m.getXy()
         >>> Xtrain,Xtest,ytrain,ytest=m.getTrainTest()
         >>> nct,cct=m.transformNumCols(),m.transformCatCols()
         >>> preprocessor=m.preprocess(nct,cct)
         >>> trained=m.pipeline(preprocessor).fit(Xtrain,ytrain)
-        >>> preds=trained.predict(Xtest,ytest)
+        >>> preds=trained.predict(Xtest)
         >>> preds
 
-        
+        Transform Imputer Strategy: mean
+
+
+        Transform Imputer Strategy: most_frequent
+        Transform Encoder: OrdinalEncoder
+        Encoder Arguments: {}   
+
+        array([5.12, 3.03])
+
         >>> score = mean_absolute_error(ytest, preds)
         >>> score
         ```
         '''
-        model,modelArgs=self._model,self._modelArgs
+        model, modelArgs = self._model, self._modelArgs
         modelArgsComm = buildModelComm(
             modelArgs, prefix=f"{model}(", suffix=')')
         try:
-
             return Pipeline(steps=[('preprocessor', preprocessor),
-                                ('model', eval(f"{modelArgsComm}"))
-                                ])
+                                   ('model', eval(f"{modelArgsComm}"))
+                                   ])
 
         except TypeError as e:  # if the correct arguments are given to the corresponding model
             raise Exception(
