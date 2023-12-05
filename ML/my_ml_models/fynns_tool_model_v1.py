@@ -77,6 +77,10 @@ class Model:
         return self._df.to_string()
 
     def _update(self, **attrs) -> None:
+        '''
+        Only affect attribute that is brought as _update methode's argument.
+        Any other attribute WON'T BE CHANGED chainly.
+        '''
         for a, v in attrs.items():
             try:
                 exec(f"self._{a}")  # check if the attribute exists
@@ -86,6 +90,10 @@ class Model:
             print("Attribute", a, "updated.")
 
     def init(self, X: pd.DataFrame, y: pd.Series, model: str | None = None, encoder: str | None = None, train_size: float | int | None = None, test_size: float | int | None = None, random_state: int | None = None,  scoreIt: bool | None = None, modelArgs: dict | None = None, encoderArgs: dict | None = None) -> None:
+        '''
+        Initial all relevant data if you call this init method.
+        Aka. if you init only y, the train-test-split and other data will be changed as well.
+        '''
         self._X, self._y = todf(X), toseries(y)
         # create a copy for the whole dataframe
         dfcopy = self._X.copy()
@@ -247,7 +255,7 @@ class Model:
             raise Exception(
                 f'Some arguments not found. \nOriginal Error Message:\n【{e}】')
         print(f'''
-        Transform Imputer Strategy: {imputeStrategy}
+        Transform Numerical Features Imputer Strategy: {imputeStrategy}
         Transform Encoder: {encoder}
         Encoder Arguments: {encoderArgs}   
         ''')
@@ -295,7 +303,7 @@ class Model:
         ```
         '''
         print(f'''
-        Transform Imputer Strategy: {strategy}
+        Transform Categorical Features Imputer Strategy: {strategy}
         ''')
         return SimpleImputer(strategy=strategy)
 
@@ -405,6 +413,55 @@ class Model:
         except TypeError as e:  # if the correct arguments are given to the corresponding model
             raise Exception(
                 f'Some arguments not found. \nOriginal Error Message:\n【{e}】')
+
+    def autoPipeline(self, transformNumStrategy: str = 'mean', transformCatColImputeStrategy: str = 'most_frequent') -> Pipeline:
+        '''
+        Bundle methodes: 
+        - transformNumCols
+        - transformCatCols
+        - preprocess
+        - pipeline
+        ```
+        >>> from fynns_tool_model_v1 import *
+        >>> df = pd.DataFrame({ 'color': ['Red', 'Green', 'Green','Green', 'Red', 'Green'],'taste': ['Sweet', np.nan,'Sweet', 'Sour', 'Sweet','Sour'], 'size': [
+        >>>                 'Big', 'Big', 'Small', 'Medium',np.nan, 'Small'], 'int_size': [7, 8, 2, 5,4, 2]})
+        >>> Xcols = list(set(df.columns)-set(['int_size']))
+        >>> m = Model(df[Xcols],df['int_size'],modelArgs={'n_estimators':100})
+        >>> m
+
+        Model set to `RandomForestRegressor` since no input for argument `model`.
+        Model set to `OrdinalEncoder` since no input for argument `model`.
+        X initiallized/updated.
+        y initiallized/updated.
+        modelArgs initiallized/updated.
+            size  color  taste  int_size
+        0     Big    Red  Sweet         7
+        1     Big  Green    NaN         8
+        2   Small  Green  Sweet         2
+        3  Medium  Green   Sour         5
+        4     NaN    Red  Sweet         4
+        5   Small  Green   Sour         2
+
+        >>> Xtest=m.getTrainTest()[1]
+        >>> p=m.autoPipeline().predict(Xtest)
+        >>> p
+
+        Transform Categorical Features Imputer Strategy: mean
+        
+
+        Transform Numerical Features Imputer Strategy: most_frequent
+        Transform Encoder: OrdinalEncoder
+        Encoder Arguments: {}   
+        
+        array([4.77, 2.96])
+        ```
+        '''
+        Xtrain, Xtest, ytrain, ytest = self._Xtrain, self._Xtest, self._ytrain, self._ytest
+        nct, cct = self.transformNumCols(strategy=transformNumStrategy), self.transformCatCols(
+            imputeStrategy=transformCatColImputeStrategy)
+        preprocessor = self.preprocess(nct, cct)
+        ppl = self.pipeline(preprocessor).fit(Xtrain, ytrain)
+        return ppl
 
     def score_dataset(self) -> float:
         ...
