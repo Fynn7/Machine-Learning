@@ -742,13 +742,16 @@ ypred:
         print("Xtrain =\n",Xtrain)
         print("Xtest =\n",Xtest)
         # fit/train the empty model with the new Xtrain and ytrain dataset
-        trained = model.fit(Xtrain, ytrain)
+        try:
+            trained = model.fit(Xtrain, ytrain)
+        except ValueError as e:
+            raise Exception(f"The y (aka. target) feature column is maybe not clean. It either contains missing values, or it is categorical, non numerical.\n Try use these code before creating autoPipeline:\n\ncleanedy=m.cleanCatY()\nm.autoPipeline()\n\nOriginal Error Message\n>>> 【{e}】")
         try:
             ypred = trained.predict(Xtest)  # should be a y prediction
             # print the prediction as dataframe
             print("ypred:\n", todf(ypred))
         except ValueError as e:
-            raise Exception(f"Found categorical value in test samples that didn't show up in the training dataset value.\nTry Cross Validation, instead of randomly train_test_split, or try a bigger dataset.\nOr try set `handle_unknown` parameter for encoder like OneHotEncoder as 'ignore'\n\nOriginal Error Message: {e}\n\nThat `Found unknown categories [XXX] in column X during transform`, the `column X` is the categorical column index. Check all categorical columns names' list and find the column name under corresponding index. (e.g. column 1 is the 2rd categorical columns in m._catColsX)")
+            raise Exception(f"Found categorical value in test samples that didn't show up in the training dataset value.\nTry Cross Validation, instead of randomly train_test_split, or try a bigger dataset.\nOr try set `handle_unknown` parameter for encoder like OneHotEncoder as 'ignore'\n\nOriginal Error Message\n>>> 【{e}】\n\nThat `Found unknown categories [XXX] in column X during transform`, the `column X` is the categorical column index. Check all categorical columns names' list and find the column name under corresponding index. (e.g. column 1 is the 2rd categorical columns in m._catColsX)")
         # score the prediction
         mae = mean_absolute_error(ytest, ypred)
         return model, mae
@@ -771,8 +774,8 @@ ypred:
         print("Xtest:\n", Xtest)
 
         pred = model.predict(Xtest)
-        # maeScore=mean_absolute_error(ytest,pred)
-        # return model,maeScore
+        maeScore=mean_absolute_error(ytest,pred)
+        return model,maeScore
 
     # -------------------------------------------
     # Cross Validation
