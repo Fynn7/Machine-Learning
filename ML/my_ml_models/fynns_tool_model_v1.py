@@ -439,6 +439,8 @@ class RegressionModel:
         5	0.0	5.2	0.0	2.0
         ```
         '''
+        if type(numColTransformer)!=SimpleImputer or type(catColTransformer)!=Pipeline:
+            raiseTypeError("`numColTransformer`|`catColTransformer`","`SimpleImputer`|`Pipeline`")
         numColsX, catColsX = self._numColsX, self._catColsX
         transformers = [
             ('numerical Transformer X', numColTransformer, numColsX),
@@ -449,7 +451,7 @@ class RegressionModel:
         )
 
     # !!!not valid y feature, should transform it first!!!
-    def cleanCatY(self,y:pd.Series|None=None,imputeStrategy:str='most_frequent') -> pd.Series:
+    def cleanCatY(self, y: pd.Series | None = None, imputeStrategy: str = 'most_frequent') -> pd.Series:
         '''
         ```
         X=m.getXy()[0]
@@ -457,11 +459,12 @@ class RegressionModel:
         m.init(X=X,y=transformedY)
         ```
         '''
-        if type(y)==type(None):
+        if type(y) == type(None):
             print("! Did not input y series, self._y is taken")
             y = self._y
-        
-        catColsTransformer = self.transformCatCols(imputeStrategy=imputeStrategy) if type(imputeStrategy)==str else raiseTypeError(imputeStrategy,str)
+
+        catColsTransformer = self.transformCatCols(imputeStrategy=imputeStrategy) if type(
+            imputeStrategy) == str else raiseTypeError(imputeStrategy, str)
         transformedY = todf(catColsTransformer.fit_transform(todf(y)))
         # transformedY.index,transformedY.columns=y.index,[y.name]
         transformedY = transformedY[0]  # toseries
@@ -566,6 +569,8 @@ color	int_size	int_gone_bad	size
  Name: taste, dtype: object)
         ```
         '''
+        if type(preprocessorX)!=ColumnTransformer:
+            raiseTypeError("preprocessorX",ColumnTransformer)
         model, modelArgs = self._model, self._modelArgs
         modelArgsComm = buildModelComm(
             modelArgs, prefix=f"{model}(", suffix=')')
@@ -580,7 +585,7 @@ color	int_size	int_gone_bad	size
             raise Exception(
                 f'Some arguments not found. \nOriginal Error Message:\n【{e}】')
 
-    def autoPipeline(self, transformNumStrategy: str = 'mean', transformCatColImputeStrategy: str = 'most_frequent',transformCategoricalY:bool=False,saveTransformedData:bool=False,scoring:str='mae') -> tuple[Pipeline, float|np.ndarray[float]]:
+    def autoPipeline(self, transformNumStrategy: str = 'mean', transformCatColImputeStrategy: str = 'most_frequent', transformCategoricalY: bool = False, saveTransformedData: bool = False, scoring: str = 'mae') -> tuple[Pipeline, float | np.ndarray[float]]:
         '''
         Bundle methodes: 
         - transformNumCols
@@ -718,8 +723,9 @@ ypred:
         ```
         '''
         # Check the parameters' types
-        if type(transformNumStrategy)!=str or type(transformCatColImputeStrategy)!=str or type(scoring)!=str:
-            raiseTypeError('Arguments `transformNumStrategy|transformCatColImputeStrategy|scoring`',str)
+        if type(transformNumStrategy) != str or type(transformCatColImputeStrategy) != str or type(scoring) != str:
+            raiseTypeError(
+                'Arguments `transformNumStrategy|transformCatColImputeStrategy|scoring`', str)
         # First we get X,y and split them as a complete dataframe & pd.Series
         X, y = self._X, self._y
         numColsX, catColsX = self._numColsX, self._catColsX
@@ -744,20 +750,19 @@ ypred:
 
         # Now we transform categorical y if needed
         if transformCategoricalY:
-            y=self.cleanCatY(y=y)
+            y = self.cleanCatY(y=y)
             # tempName=y.name # temperary hold the name for next
             # # !!!NOTE: we directly change y here!!!
             # y= todf(cct.fit_transform(todf(y)))[0] # it's a series, after all this line code
             # y.name=tempName
             # del tempName
 
-
         # ! split a new part of train test, using arguments as given before, as when the model initiallized
         Xtrain, Xtest, ytrain, ytest = train_test_split(
             preprocessed_X, y, train_size=train_size, test_size=test_size, random_state=random_state)
         # save transformed data: transformed X, y and train test split
         if saveTransformedData:
-            self._X,self._y,self._Xtrain,self.Xtest,self._ytrain,self._ytest=preprocessed_X,y,Xtrain, Xtest, ytrain, ytest
+            self._X, self._y, self._Xtrain, self.Xtest, self._ytrain, self._ytest = preprocessed_X, y, Xtrain, Xtest, ytrain, ytest
         print("Xtrain =\n", Xtrain)
         print("Xtest =\n", Xtest)
         # fit/train the empty model with the new Xtrain and ytrain dataset
@@ -774,16 +779,17 @@ ypred:
             raise Exception(
                 f"Found categorical value in test samples that didn't show up in the training dataset value.\nTry Cross Validation, instead of randomly train_test_split, or try a bigger dataset.\nOr try set `handle_unknown` parameter for encoder like OneHotEncoder as 'ignore'\n\nOriginal Error Message\n>>> 【{e}】\n\nThat `Found unknown categories [XXX] in column X during transform`, the `column X` is the categorical column index. Check all categorical columns names' list and find the column name under corresponding index. (e.g. column 1 is the 2rd categorical columns in m._catColsX)")
         # score the prediction
-        if scoring=='mae':
+        if scoring == 'mae':
             score = mean_absolute_error(ytest, ypred)
 
-        elif scoring=='cv':
+        elif scoring == 'cv':
             score = -1 * cross_val_score(model, preprocessed_X, y,
-                              cv=5,
-                              scoring='neg_mean_absolute_error')
+                                         cv=5,
+                                         scoring='neg_mean_absolute_error')
             print("NOTE: For Cross Validation Score:\nCode here will work, but still contains error in some special cases.\ne.g. test categorical data not found in training data etc.")
         else:
-            raise ValueError(f"Argument `scoring` should be among these values: {'mae','cv'}, got {scoring}")
+            raise ValueError(
+                f"Argument `scoring` should be among these values: {'mae','cv'}, got {scoring}")
         return model, score
 
         Xtrain, Xtest, ytrain, ytest, numColsX, catColsX, nct, cct = self.getTrainTest(), self._numColsX, self._catColsX, self.transformNumCols(strategy=transformNumStrategy), self.transformCatCols(
@@ -810,10 +816,27 @@ ypred:
     # -------------------------------------------
     # Cross Validation
 
-    def crossValScore(self, pipeline: Pipeline, X: pd.DataFrame, y: pd.Series,
-                      cv=5,
-                      scoring='neg_mean_absolute_error') -> ...:
-        return
+    def crossValScore(self, model: Pipeline | None = None, X: pd.DataFrame | None = None, y: pd.Series | None = None,
+                      cv: int = 5,
+                      scoring='neg_mean_absolute_error') -> np.ndarray[float]:
+        # Check the parameters' types
+        if type(model) != Pipeline:
+            if type(model) == type(None):
+                model = self.pipeline(self.preprocessX(
+                    self.transformNumCols(), self.transformCatCols()))
+                print(
+                    f"Model Pipeline set to `{model}` since no input for argument `model` AND ALSO WITH ALL DEFAULT PARAMETERS FOR PIPELINES , PREPROCESSORS etc. .")
+            else:  # neither pipeline nor None
+                raiseTypeError(
+                    'Arguments `model`', Pipeline)
+                
+        if type(X) == type(None):
+            X = self._X
+        if type(y) == type(None):
+            y = self._y
+        return -1 * cross_val_score(model, todf(X), toseries(y),
+                                    cv=cv,
+                                    scoring=scoring)
 
     def score_dataset(self) -> float:
         ...
