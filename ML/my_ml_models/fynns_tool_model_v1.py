@@ -60,7 +60,7 @@ def buildModelComm(args: dict, prefix: str = "", suffix: str = "") -> str:
     comm = prefix
     for k, v in args.items():
         comm += f"{k}="
-        if type(v)==str: # if the value of the argument is str type, like handle_unknown='ignore'
+        if type(v) == str:  # if the value of the argument is str type, like handle_unknown='ignore'
             comm += f"\'{v}\',"
         else:
             comm += f"{v},"
@@ -248,12 +248,12 @@ class RegressionModel:
         >>> X,y=m.getXy()
         >>> X
         color	int_size	int_gone_bad	size
-0	Red	7.0	1.0	Big
-1	Green	8.0	0.0	Big
-2	Green	2.0	NaN	Small
-3	Green	5.0	0.0	Medium
-4	Red	4.0	0.0	NaN
-5	Green	NaN	0.0	Small
+        0	Red	    7.0	        1.0	        Big
+        1	Green	8.0	        0.0	        Big
+        2	Green	2.0	        NaN	        Small
+        3	Green	5.0	        0.0	        Medium
+        4	Red	    4.0	        0.0	        NaN
+        5	Green	NaN	        0.0	        Small
 
         >>> nct,cct=m.transformNumCols(),m.transformCatCols()
         >>> transformed=todf(cct.fit_transform(X,y))
@@ -267,13 +267,13 @@ class RegressionModel:
         Transform Encoder: OrdinalEncoder
         Encoder Arguments: {}   
 
-color	int_size	int_gone_bad	size
-0	1.0	3.0	1.0	0.0
-1	0.0	4.0	0.0	0.0
-2	0.0	0.0	0.0	2.0
-3	0.0	2.0	0.0	1.0
-4	1.0	1.0	0.0	0.0
-5	0.0	0.0	0.0	2.0
+        color	int_size	int_gone_bad	size
+        0	1.0	3.0	1.0	0.0
+        1	0.0	4.0	0.0	0.0
+        2	0.0	0.0	0.0	2.0
+        3	0.0	2.0	0.0	1.0
+        4	1.0	1.0	0.0	0.0
+        5	0.0	0.0	0.0	2.0
         ```
         '''
         # df, X, y, Xtrain, Xtest, ytrain, ytest, allCatCols, nanCols = self._df, self._X, self._y, self._Xtrain, self._Xtest, self._ytrain, self._ytest, self._catCols, self._nanCols
@@ -281,7 +281,7 @@ color	int_size	int_gone_bad	size
         # Create pipeline for imputing & encoding
         argsComm = buildModelComm(
             encoderArgs, prefix=f"{encoder}(", suffix=')')
-        print("Model Code Built As:",argsComm)
+        print("Model Code Built As:", argsComm)
         try:
             cct = Pipeline(steps=[
                 ('imputer', SimpleImputer(strategy=imputeStrategy)),
@@ -362,13 +362,13 @@ color	int_size	int_gone_bad	size
         Transform Encoder: OrdinalEncoder
         Encoder Arguments: {}   
 
-int_gone_bad	int_size
-0	1.0	7.0
-1	0.0	8.0
-2	0.2	2.0
-3	0.0	5.0
-4	0.0	4.0
-5	0.0	5.2
+        int_gone_bad	int_size
+        0	1.0	7.0
+        1	0.0	8.0
+        2	0.2	2.0
+        3	0.0	5.0
+        4	0.0	4.0
+        5	0.0	5.2
         ```
         '''
         print(f'''
@@ -387,35 +387,35 @@ int_gone_bad	int_size
         >>> m = RegressionModel(df[Xcols],df['taste'],modelArgs={'n_estimators':100},random_state=42)
         >>> m
 
-Model set to `RandomForestRegressor` since no input for argument `model`.
-Model set to `OrdinalEncoder` since no input for argument `model`.
-X initiallized/updated.
-y initiallized/updated.
-random_state initiallized/updated.
-modelArgs initiallized/updated.
-   color  int_size    size  int_gone_bad  taste
-0    Red       7.0     Big           1.0  Sweet
-1  Green       8.0     Big           0.0    NaN
-2  Green       2.0   Small           NaN  Sweet
-3  Green       5.0  Medium           0.0   Sour
-4    Red       4.0     NaN           0.0  Sweet
-5  Green       NaN   Small           0.0   Sour
+        Model set to `RandomForestRegressor` since no input for argument `model`.
+        Model set to `OrdinalEncoder` since no input for argument `model`.
+        X initiallized/updated.
+        y initiallized/updated.
+        random_state initiallized/updated.
+        modelArgs initiallized/updated.
+        color  int_size    size  int_gone_bad  taste
+        0    Red       7.0     Big           1.0  Sweet
+        1  Green       8.0     Big           0.0    NaN
+        2  Green       2.0   Small           NaN  Sweet
+        3  Green       5.0  Medium           0.0   Sour
+        4    Red       4.0     NaN           0.0  Sweet
+        5  Green       NaN   Small           0.0   Sour
 
 
         >>> X,y=m.getXy()
         >>> Xtrain,Xtest,ytrain,ytest=m.getTrainTest()
         >>> Xtrain
 
-        color	int_size	size	int_gone_bad
-5	Green	NaN	Small	0.0
-2	Green	2.0	Small	NaN
-4	Red	4.0	NaN	0.0
-3	Green	5.0	Medium	0.0
+                color	int_size	size	int_gone_bad
+        5	Green	NaN	Small	0.0
+        2	Green	2.0	Small	NaN
+        4	Red	4.0	NaN	0.0
+        3	Green	5.0	Medium	0.0
 
         >>> numColsX,catColsX=m.getNumColsX(),m.getCatColsX()
         >>> numColsX,catColsX
 
-(['int_size', 'int_gone_bad'], ['color', 'size'])
+        (['int_size', 'int_gone_bad'], ['color', 'size'])
 
         >>> nct,cct=m.transformNumCols(),m.transformCatCols()
         >>> preprocessor=m.preprocess(numColTransformer=nct,catColTransformer=cct)
@@ -430,13 +430,13 @@ modelArgs initiallized/updated.
         Transform Encoder: OrdinalEncoder
         Encoder Arguments: {}   
 
-int_gone_bad	int_size	color	size
-0	1.0	7.0	1.0	0.0
-1	0.0	8.0	0.0	0.0
-2	0.2	2.0	0.0	2.0
-3	0.0	5.0	0.0	1.0
-4	0.0	4.0	1.0	0.0
-5	0.0	5.2	0.0	2.0
+        int_gone_bad	int_size	color	size
+        0	1.0	7.0	1.0	0.0
+        1	0.0	8.0	0.0	0.0
+        2	0.2	2.0	0.0	2.0
+        3	0.0	5.0	0.0	1.0
+        4	0.0	4.0	1.0	0.0
+        5	0.0	5.2	0.0	2.0
         ```
         '''
         numColsX, catColsX = self._numColsX, self._catColsX
@@ -449,7 +449,7 @@ int_gone_bad	int_size	color	size
         )
 
     # !!!not valid y feature, should transform it first!!!
-    def cleanCatY(self) -> pd.Series:
+    def cleanCatY(self,y:pd.Series|None=None,imputeStrategy:str='most_frequent') -> pd.Series:
         '''
         ```
         X=m.getXy()[0]
@@ -457,8 +457,11 @@ int_gone_bad	int_size	color	size
         m.init(X=X,y=transformedY)
         ```
         '''
-        y = self._y
-        catColsTransformer = self.transformCatCols()
+        if type(y)==type(None):
+            print("! Did not input y series, self._y is taken")
+            y = self._y
+        
+        catColsTransformer = self.transformCatCols(imputeStrategy=imputeStrategy) if type(imputeStrategy)==str else raiseTypeError(imputeStrategy,str)
         transformedY = todf(catColsTransformer.fit_transform(todf(y)))
         # transformedY.index,transformedY.columns=y.index,[y.name]
         transformedY = transformedY[0]  # toseries
@@ -474,12 +477,12 @@ int_gone_bad	int_size	color	size
             False: Only X will be preprocessed. (avoid y being preprocessed, WE EXPECT y column is clean, AKA without missing values and numerical)
 
         ```
-        from fynns_tool_model_v1 import *
-df = pd.DataFrame({ 'color': ['Red', 'Green', 'Green','Green', 'Red', 'Green'],'int_gone_bad':[1,0,np.nan,0,0,0],'taste': ['Sweet', np.nan,'Sweet', 'Sour', 'Sweet','Sour'], 'size': [
-                  'Big', 'Big', 'Small', 'Medium',np.nan, 'Small'], 'int_size': [7, 8, 2, 5,4, np.nan]})
-Xcols = list(set(df.columns)-set(['taste']))
-m = RegressionModel(df[Xcols],df['taste'],modelArgs={'n_estimators':100,'random_state':42})
-m
+        >>> from fynns_tool_model_v1 import *
+        >>> df = pd.DataFrame({ 'color': ['Red', 'Green', 'Green','Green', 'Red', 'Green'],'int_gone_bad':[1,0,np.nan,0,0,0],'taste': ['Sweet', np.nan,'Sweet', 'Sour', 'Sweet','Sour'], 'size': [
+        >>>                   'Big', 'Big', 'Small', 'Medium',np.nan, 'Small'], 'int_size': [7, 8, 2, 5,4, np.nan]})
+        >>> Xcols = list(set(df.columns)-set(['taste']))
+        >>> m = RegressionModel(df[Xcols],df['taste'],modelArgs={'n_estimators':100,'random_state':42})
+        >>> m
 
 
 Model set to `RandomForestRegressor` since no input for argument `model`.
@@ -496,8 +499,8 @@ modelArgs initiallized/updated.
 5  Green       NaN           0.0   Small   Sour
 
 
-X,y=m.getXy()
-X
+        >>> X,y=m.getXy()
+        >>> X
 
 
 color	int_size	int_gone_bad	size
@@ -510,14 +513,14 @@ color	int_size	int_gone_bad	size
 
 
 
-numColsX,catColsX=m.getNumColsX(),m.getCatColsX()
-numColsX,catColsX
+        >>> numColsX,catColsX=m.getNumColsX(),m.getCatColsX()
+        >>> numColsX,catColsX
 
-(['int_size', 'int_gone_bad'], ['color', 'size'])
+        (['int_size', 'int_gone_bad'], ['color', 'size'])
 
 
-Xtrain,Xtest,ytrain,ytest=m.getTrainTest()
-Xtrain,ytrain
+        >>> Xtrain,Xtest,ytrain,ytest=m.getTrainTest()
+        >>> Xtrain,ytrain
 
 (   color  int_size  int_gone_bad   size
  2  Green       2.0           NaN  Small
@@ -531,13 +534,13 @@ Xtrain,ytrain
  Name: taste, dtype: object)
 
 
- nct,cct=m.transformNumCols(),m.transformCatCols()
-preprocessorX=m.preprocessX(numColTransformer=nct,catColTransformer=cct)
-transformedy=todf(cct.fit_transform(todf(y)))
-transformedy.index,transformedy.columns=y.index,[y.name]
-model=m.pipeline(preprocessorX)
-trainedModel=model.fit(X,transformedy)
-trainedModel.predict(Xtest)
+        >>> nct,cct=m.transformNumCols(),m.transformCatCols()
+        >>> preprocessorX=m.preprocessX(numColTransformer=nct,catColTransformer=cct)
+        >>> transformedy=todf(cct.fit_transform(todf(y)))
+        >>> transformedy.index,transformedy.columns=y.index,[y.name]
+        >>> model=m.pipeline(preprocessorX)
+        >>> trainedModel=model.fit(X,transformedy)
+        >>> trainedModel.predict(Xtest)
 
 
 
@@ -577,7 +580,7 @@ trainedModel.predict(Xtest)
             raise Exception(
                 f'Some arguments not found. \nOriginal Error Message:\n【{e}】')
 
-    def autoPipeline(self, transformNumStrategy: str = 'mean', transformCatColImputeStrategy: str = 'most_frequent') -> tuple[Pipeline, float]:
+    def autoPipeline(self, transformNumStrategy: str = 'mean', transformCatColImputeStrategy: str = 'most_frequent',transformCategoricalY:bool=False,saveTransformedData:bool=False,scoring:str='mae') -> tuple[Pipeline, float|np.ndarray[float]]:
         '''
         Bundle methodes: 
         - transformNumCols
@@ -586,7 +589,7 @@ trainedModel.predict(Xtest)
         - pipeline
         # Must set `m.encoderArgs={'handle_unknown':'ignore'}` while you have a small dataset,
         to prevent test samples that HAVEN'T SHOWN UP IN THE train samples:
-        
+
         Original ChatGPT Solution: 
 
         增加样本量： 如果可能的话，尝试增加数据集的样本量，这样模型就能更好地捕捉到所有类别，并且不同的随机种子在数据集的不同划分下会更加稳定。
@@ -596,11 +599,11 @@ trainedModel.predict(Xtest)
         检查数据质量： 仔细检查数据，确保没有不一致的地方，例如空格、数据类型不匹配等。
 
         处理未知类别： 如前所述，可以使用编码器的 handle_unknown 参数来处理未知类别，以防止在测试集中出现训练集中没有的类别。
-            
+
         **确保一致的数据类型：**确保列的数据类型适用于分类变量。如果该列应包含分类数据，请确保其为 category 类型。
         `df['column_name'] = df['column_name'].astype('category')`
 
-        
+
         ```
 from fynns_tool_model_v1 import *
 df = pd.DataFrame({ 'color': ['Red', 'Green', 'Green','Green', 'Red', 'Green'],'int_gone_bad':[1,0,np.nan,0,0,0],'taste': ['Sweet', np.nan,'Sweet', 'Sour', 'Sweet','Sour'], 'size': [
@@ -714,7 +717,9 @@ ypred:
 
         ```
         '''
-
+        # Check the parameters' types
+        if type(transformNumStrategy)!=str or type(transformCatColImputeStrategy)!=str or type(scoring)!=str:
+            raiseTypeError('Arguments `transformNumStrategy|transformCatColImputeStrategy|scoring`',str)
         # First we get X,y and split them as a complete dataframe & pd.Series
         X, y = self._X, self._y
         numColsX, catColsX = self._numColsX, self._catColsX
@@ -736,25 +741,50 @@ ypred:
         print("preprocessed_X:\n", preprocessed_X)
         # bundle preprocessor as a pipeline, bring in the model(likely RandomForestRegressor) that was initiallized before in the model attribute
         model = self.pipeline(preprocessorX)
-        # ! split a new part of train test, using arguments as given before, as when the model initiallized,  BUT WE DON'T SAVE THESE
+
+        # Now we transform categorical y if needed
+        if transformCategoricalY:
+            y=self.cleanCatY(y=y)
+            # tempName=y.name # temperary hold the name for next
+            # # !!!NOTE: we directly change y here!!!
+            # y= todf(cct.fit_transform(todf(y)))[0] # it's a series, after all this line code
+            # y.name=tempName
+            # del tempName
+
+
+        # ! split a new part of train test, using arguments as given before, as when the model initiallized
         Xtrain, Xtest, ytrain, ytest = train_test_split(
             preprocessed_X, y, train_size=train_size, test_size=test_size, random_state=random_state)
-        print("Xtrain =\n",Xtrain)
-        print("Xtest =\n",Xtest)
+        # save transformed data: transformed X, y and train test split
+        if saveTransformedData:
+            self._X,self._y,self._Xtrain,self.Xtest,self._ytrain,self._ytest=preprocessed_X,y,Xtrain, Xtest, ytrain, ytest
+        print("Xtrain =\n", Xtrain)
+        print("Xtest =\n", Xtest)
         # fit/train the empty model with the new Xtrain and ytrain dataset
         try:
             trained = model.fit(Xtrain, ytrain)
         except ValueError as e:
-            raise Exception(f"The y (aka. target) feature column is maybe not clean. It either contains missing values, or it is categorical, non numerical.\n Try use these code before creating autoPipeline:\n\ncleanedy=m.cleanCatY()\nm.autoPipeline()\n\nOriginal Error Message\n>>> 【{e}】")
+            raise Exception(
+                f"The y (aka. target) feature column is maybe not clean. It either contains missing values, or it is categorical, non numerical.\n Try use these code before creating autoPipeline:\n\ncleanedy=m.cleanCatY()\nm.autoPipeline()\n\nOriginal Error Message\n>>> 【{e}】")
         try:
             ypred = trained.predict(Xtest)  # should be a y prediction
             # print the prediction as dataframe
             print("ypred:\n", todf(ypred))
         except ValueError as e:
-            raise Exception(f"Found categorical value in test samples that didn't show up in the training dataset value.\nTry Cross Validation, instead of randomly train_test_split, or try a bigger dataset.\nOr try set `handle_unknown` parameter for encoder like OneHotEncoder as 'ignore'\n\nOriginal Error Message\n>>> 【{e}】\n\nThat `Found unknown categories [XXX] in column X during transform`, the `column X` is the categorical column index. Check all categorical columns names' list and find the column name under corresponding index. (e.g. column 1 is the 2rd categorical columns in m._catColsX)")
+            raise Exception(
+                f"Found categorical value in test samples that didn't show up in the training dataset value.\nTry Cross Validation, instead of randomly train_test_split, or try a bigger dataset.\nOr try set `handle_unknown` parameter for encoder like OneHotEncoder as 'ignore'\n\nOriginal Error Message\n>>> 【{e}】\n\nThat `Found unknown categories [XXX] in column X during transform`, the `column X` is the categorical column index. Check all categorical columns names' list and find the column name under corresponding index. (e.g. column 1 is the 2rd categorical columns in m._catColsX)")
         # score the prediction
-        mae = mean_absolute_error(ytest, ypred)
-        return model, mae
+        if scoring=='mae':
+            score = mean_absolute_error(ytest, ypred)
+
+        elif scoring=='cv':
+            score = -1 * cross_val_score(model, preprocessed_X, y,
+                              cv=5,
+                              scoring='neg_mean_absolute_error')
+            print("NOTE: For Cross Validation Score:\nCode here will work, but still contains error in some special cases.\ne.g. test categorical data not found in training data etc.")
+        else:
+            raise ValueError(f"Argument `scoring` should be among these values: {'mae','cv'}, got {scoring}")
+        return model, score
 
         Xtrain, Xtest, ytrain, ytest, numColsX, catColsX, nct, cct = self.getTrainTest(), self._numColsX, self._catColsX, self.transformNumCols(strategy=transformNumStrategy), self.transformCatCols(
             imputeStrategy=transformCatColImputeStrategy)
@@ -774,8 +804,8 @@ ypred:
         print("Xtest:\n", Xtest)
 
         pred = model.predict(Xtest)
-        maeScore=mean_absolute_error(ytest,pred)
-        return model,maeScore
+        maeScore = mean_absolute_error(ytest, pred)
+        return model, maeScore
 
     # -------------------------------------------
     # Cross Validation
