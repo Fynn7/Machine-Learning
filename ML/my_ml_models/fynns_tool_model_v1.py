@@ -766,11 +766,13 @@ ypred:
         print("Xtrain =\n", Xtrain)
         print("Xtest =\n", Xtest)
         # fit/train the empty model with the new Xtrain and ytrain dataset
+        # caught unclean y column
         try:
             trained = model.fit(Xtrain, ytrain)
         except ValueError as e:
             raise Exception(
                 f"The y (aka. target) feature column is maybe not clean. It either contains missing values, or it is categorical, non numerical.\n Try use these code before creating autoPipeline:\n\ncleanedy=m.cleanCatY()\nm.autoPipeline()\n\nOriginal Error Message\n>>> 【{e}】")
+        # cought unfound values in test samples that couldn't found in training data
         try:
             ypred = trained.predict(Xtest)  # should be a y prediction
             # print the prediction as dataframe
@@ -792,33 +794,13 @@ ypred:
                 f"Argument `scoring` should be among these values: {'mae','cv'}, got {scoring}")
         return model, score
 
-        Xtrain, Xtest, ytrain, ytest, numColsX, catColsX, nct, cct = self.getTrainTest(), self._numColsX, self._catColsX, self.transformNumCols(strategy=transformNumStrategy), self.transformCatCols(
-            imputeStrategy=transformCatColImputeStrategy)
-        nct, cct = self.transformNumCols(strategy=transformNumStrategy), self.transformCatCols(
-            imputeStrategy=transformCatColImputeStrategy)
-        preprocessorX = self.preprocessX(nct, cct)
-        ppl = self.pipeline(preprocessorX)
-        try:
-            model = ppl.fit(Xtrain, ytrain)
-        except ValueError as e:
-            raise Exception(
-                f"Maybe your y column (aka. target feature) is not valid. Either it contains NaN, or it's not clean.\nTry to use these code first to clean y feature:\ncleanedy=m.cleanCatY()\nm.init(X=X,y=cleanedy)\nOriginal Error Message:\n{e}")
-
-        # !!!We should also preprocess Xtest as well:
-        Xtest = todf(preprocessorX.fit_transform(Xtest, ytest))
-        Xtest.columns = numColsX+catColsX
-        print("Xtest:\n", Xtest)
-
-        pred = model.predict(Xtest)
-        maeScore = mean_absolute_error(ytest, pred)
-        return model, maeScore
-
     # -------------------------------------------
     # Cross Validation
 
     def crossValScore(self, model: Pipeline | None = None, X: pd.DataFrame | None = None, y: pd.Series | None = None,
                       cv: int = 5,
-                      scoring='neg_mean_absolute_error') -> np.ndarray[float]:
+                      scoring='neg_mean_absolute_error',
+                      how: str='raw') -> float|np.ndarray[float]:
         # Check the parameters' types
         if type(model) != Pipeline:
             if type(model) == type(None):
@@ -834,9 +816,18 @@ ypred:
             X = self._X
         if type(y) == type(None):
             y = self._y
-        return -1 * cross_val_score(model, todf(X), toseries(y),
+        if type(how) != str:
+            raiseTypeError('Argument `how`', str)
+        if how=="raw":
+            return -1 * cross_val_score(model, todf(X), toseries(y),
                                     cv=cv,
                                     scoring=scoring)
-
-    def score_dataset(self) -> float:
-        ...
+        elif how=="mean":
+            return -1 * cross_val_score(model, todf(X), toseries(y),
+                                    cv=cv,
+                                    scoring=scoring).mean()
+        else:
+            raise ValueError(f"Argument `how` should be among these values: {'raw','mean'}, got {how}")
+    
+    # -------------------------------------------
+    
