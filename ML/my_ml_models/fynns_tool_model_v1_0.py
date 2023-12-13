@@ -1,3 +1,10 @@
+'''
+NOTE FOR VERSION 1
+Note time: 2023.12.13.22:49
+
+This version will work for most cases. Cases see method instructions(written inside methods) or see the earlier test.ipynb before uploaded/merged to the main branch. Check up the "file change" (+/-) in earlier pull request.
+
+'''
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split, cross_val_score
@@ -8,6 +15,7 @@ from sklearn.preprocessing import LabelEncoder, OrdinalEncoder, OneHotEncoder
 from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
 
+from xgboost import XGBRegressor
 
 def raiseTypeError(arg: object, shouldBe: type | object, origErrMsg: str | None = None) -> None:
     errmsg = f'【{arg}】 should be 【{shouldBe}】, not 【{type(arg)}.】'
@@ -450,6 +458,7 @@ class RegressionModel:
             transformers=transformers
         )
 
+    
     # !!!not valid y feature, should transform it first!!!
     def cleanCatY(self, y: pd.Series | None = None, imputeStrategy: str = 'most_frequent') -> pd.Series:
         '''
@@ -488,31 +497,31 @@ class RegressionModel:
         >>> m
 
 
-Model set to `RandomForestRegressor` since no input for argument `model`.
-Model set to `OrdinalEncoder` since no input for argument `model`.
-X initiallized/updated.
-y initiallized/updated.
-modelArgs initiallized/updated.
-   color  int_size  int_gone_bad    size  taste
-0    Red       7.0           1.0     Big  Sweet
-1  Green       8.0           0.0     Big    NaN
-2  Green       2.0           NaN   Small  Sweet
-3  Green       5.0           0.0  Medium   Sour
-4    Red       4.0           0.0     NaN  Sweet
-5  Green       NaN           0.0   Small   Sour
+        Model set to `RandomForestRegressor` since no input for argument `model`.
+        Model set to `OrdinalEncoder` since no input for argument `model`.
+        X initiallized/updated.
+        y initiallized/updated.
+        modelArgs initiallized/updated.
+        color  int_size  int_gone_bad    size  taste
+        0    Red       7.0           1.0     Big  Sweet
+        1  Green       8.0           0.0     Big    NaN
+        2  Green       2.0           NaN   Small  Sweet
+        3  Green       5.0           0.0  Medium   Sour
+        4    Red       4.0           0.0     NaN  Sweet
+        5  Green       NaN           0.0   Small   Sour
 
 
         >>> X,y=m.getXy()
         >>> X
 
 
-color	int_size	int_gone_bad	size
-0	Red	7.0	1.0	Big
-1	Green	8.0	0.0	Big
-2	Green	2.0	NaN	Small
-3	Green	5.0	0.0	Medium
-4	Red	4.0	0.0	NaN
-5	Green	NaN	0.0	Small
+        color	int_size	int_gone_bad	size
+        0	Red	7.0	1.0	Big
+        1	Green	8.0	0.0	Big
+        2	Green	2.0	NaN	Small
+        3	Green	5.0	0.0	Medium
+        4	Red	4.0	0.0	NaN
+        5	Green	NaN	0.0	Small
 
 
 
@@ -525,16 +534,16 @@ color	int_size	int_gone_bad	size
         >>> Xtrain,Xtest,ytrain,ytest=m.getTrainTest()
         >>> Xtrain,ytrain
 
-(   color  int_size  int_gone_bad   size
- 2  Green       2.0           NaN  Small
- 5  Green       NaN           0.0  Small
- 1  Green       8.0           0.0    Big
- 4    Red       4.0           0.0    NaN,
- 2    Sweet
- 5     Sour
- 1      NaN
- 4    Sweet
- Name: taste, dtype: object)
+        (   color  int_size  int_gone_bad   size
+        2  Green       2.0           NaN  Small
+        5  Green       NaN           0.0  Small
+        1  Green       8.0           0.0    Big
+        4    Red       4.0           0.0    NaN,
+        2    Sweet
+        5     Sour
+        1      NaN
+        4    Sweet
+        Name: taste, dtype: object)
 
 
         >>> nct,cct=m.transformNumCols(),m.transformCatCols()
@@ -562,11 +571,11 @@ color	int_size	int_gone_bad	size
 
 
         (   color  int_size  int_gone_bad    size
- 3  Green       5.0           0.0  Medium
- 0    Red       7.0           1.0     Big,
- 3     Sour
- 0    Sweet
- Name: taste, dtype: object)
+        3  Green       5.0           0.0  Medium
+        0    Red       7.0           1.0     Big,
+        3     Sour
+        0    Sweet
+        Name: taste, dtype: object)
         ```
         '''
         if type(preprocessorX)!=ColumnTransformer:
@@ -610,50 +619,50 @@ color	int_size	int_gone_bad	size
 
 
         ```
-from fynns_tool_model_v1 import *
-df = pd.DataFrame({ 'color': ['Red', 'Green', 'Green','Green', 'Red', 'Green'],'int_gone_bad':[1,0,np.nan,0,0,0],'taste': ['Sweet', np.nan,'Sweet', 'Sour', 'Sweet','Sour'], 'size': [
-                  'Big', 'Big', 'Small', 'Medium',np.nan, 'Small'], 'int_size': [7, 8, 2, 5,4, np.nan]})
-Xcols = list(set(df.columns)-set(['taste']))
-m = RegressionModel(df[Xcols],df['taste'],modelArgs={'n_estimators':100,'random_state':42})
-m
+        >>> from fynns_tool_model_v1 import *
+        >>> df = pd.DataFrame({ 'color': ['Red', 'Green', 'Green','Green', 'Red', 'Green'],'int_gone_bad':[1,0,np.nan,0,0,0],'taste': ['Sweet', np.nan,'Sweet', 'Sour', 'Sweet','Sour'], 'size': [
+        >>>                   'Big', 'Big', 'Small', 'Medium',np.nan, 'Small'], 'int_size': [7, 8, 2, 5,4, np.nan]})
+        >>> Xcols = list(set(df.columns)-set(['taste']))
+        >>> m = RegressionModel(df[Xcols],df['taste'],modelArgs={'n_estimators':100,'random_state':42})
+        >>> m
 
-Model set to `RandomForestRegressor` since no input for argument `model`.
-Model set to `OrdinalEncoder` since no input for argument `model`.
-X initiallized/updated.
-y initiallized/updated.
-modelArgs initiallized/updated.
-   int_size  color    size  int_gone_bad  taste
-0       7.0    Red     Big           1.0  Sweet
-1       8.0  Green     Big           0.0    NaN
-2       2.0  Green   Small           NaN  Sweet
-3       5.0  Green  Medium           0.0   Sour
-4       4.0    Red     NaN           0.0  Sweet
-5       NaN  Green   Small           0.0   Sour
+        Model set to `RandomForestRegressor` since no input for argument `model`.
+        Model set to `OrdinalEncoder` since no input for argument `model`.
+        X initiallized/updated.
+        y initiallized/updated.
+        modelArgs initiallized/updated.
+        int_size  color    size  int_gone_bad  taste
+        0       7.0    Red     Big           1.0  Sweet
+        1       8.0  Green     Big           0.0    NaN
+        2       2.0  Green   Small           NaN  Sweet
+        3       5.0  Green  Medium           0.0   Sour
+        4       4.0    Red     NaN           0.0  Sweet
+        5       NaN  Green   Small           0.0   Sour
 
-numColsX,catColsX=m.getNumColsX(),m.getCatColsX()
-numColsX,catColsX
+        >>> numColsX,catColsX=m.getNumColsX(),m.getCatColsX()
+        >>> numColsX,catColsX
 
-(['int_size', 'int_gone_bad'], ['color', 'size'])
-
-
-X,y=m.getXy()
-y
-
-0    1.0
-1    1.0
-2    1.0
-3    0.0
-4    1.0
-5    0.0
-Name: taste, dtype: float64
+        (['int_size', 'int_gone_bad'], ['color', 'size'])
 
 
-cleanedy=m.cleanCatY()
+        >>> X,y=m.getXy()
+        >>> y
 
-m.init(X=X,y=cleanedy)
-ap=m.autoPipeline()
-Xtrain,Xtest,ytrain,ytest=m.getTrainTest()
-ap
+        0    1.0
+        1    1.0
+        2    1.0
+        3    0.0
+        4    1.0
+        5    0.0
+        Name: taste, dtype: float64
+
+
+        >>> cleanedy=m.cleanCatY()
+
+        >>> m.init(X=X,y=cleanedy)
+        >>> ap=m.autoPipeline()
+        >>> Xtrain,Xtest,ytrain,ytest=m.getTrainTest()
+        >>> ap
 
 
 
@@ -662,19 +671,19 @@ ap
         Encoder Arguments: {}   
 
 
-              transformed:
-                 int_size  color  size  int_gone_bad
-0       3.0    1.0   0.0           1.0
-1       4.0    0.0   0.0           0.0
-2       0.0    0.0   2.0           0.0
-3       2.0    0.0   1.0           0.0
-4       1.0    1.0   0.0           0.0
-5       0.0    0.0   2.0           0.0
+        transformed:
+            int_size  color  size  int_gone_bad
+        0       3.0    1.0   0.0           1.0
+        1       4.0    0.0   0.0           0.0
+        2       0.0    0.0   2.0           0.0
+        3       2.0    0.0   1.0           0.0
+        4       1.0    1.0   0.0           0.0
+        5       0.0    0.0   2.0           0.0
 
-Model set to `RandomForestRegressor` since no input for argument `model`.
-Model set to `OrdinalEncoder` since no input for argument `model`.
-X initiallized/updated.
-y initiallized/updated.
+        Model set to `RandomForestRegressor` since no input for argument `model`.
+        Model set to `OrdinalEncoder` since no input for argument `model`.
+        X initiallized/updated.
+        y initiallized/updated.
 
         Transform Categorical Features Imputer Strategy: mean
 
@@ -684,41 +693,41 @@ y initiallized/updated.
         Encoder Arguments: {}   
 
 
-              transformed:
-                 int_size  color  size  int_gone_bad
-0       3.0    1.0   0.0           1.0
-1       4.0    0.0   0.0           0.0
-2       0.0    0.0   2.0           0.0
-3       2.0    0.0   1.0           0.0
-4       1.0    1.0   0.0           0.0
-5       0.0    0.0   2.0           0.0
+        transformed:
+            int_size  color  size  int_gone_bad
+        0       3.0    1.0   0.0           1.0
+        1       4.0    0.0   0.0           0.0
+        2       0.0    0.0   2.0           0.0
+        3       2.0    0.0   1.0           0.0
+        4       1.0    1.0   0.0           0.0
+        5       0.0    0.0   2.0           0.0
 
-preprocessed_X:
-    int_size  int_gone_bad  color  size
-0       7.0           1.0    1.0   0.0
-1       8.0           0.0    0.0   0.0
-2       2.0           0.2    0.0   2.0
-3       5.0           0.0    0.0   1.0
-4       4.0           0.0    1.0   0.0
-5       5.2           0.0    0.0   2.0
-ypred:
-       0
-0  0.62
-1  0.40
+        preprocessed_X:
+            int_size  int_gone_bad  color  size
+        0       7.0           1.0    1.0   0.0
+        1       8.0           0.0    0.0   0.0
+        2       2.0           0.2    0.0   2.0
+        3       5.0           0.0    0.0   1.0
+        4       4.0           0.0    1.0   0.0
+        5       5.2           0.0    0.0   2.0
+        ypred:
+                0
+        0       0.62
+        1       0.40
 
 
-(Pipeline(steps=[('preprocessorX',
-                  ColumnTransformer(transformers=[('numerical Transformer X',
-                                                   SimpleImputer(),
-                                                   ['int_size', 'int_gone_bad']),
-                                                  ('categorical Transformer X',
-                                                   Pipeline(steps=[('imputer',
-                                                                    SimpleImputer(strategy='most_frequent')),
-                                                                   ('encoder',
-                                                                    OrdinalEncoder())]),
-                                                   ['color', 'size'])])),
-                 ('model', RandomForestRegressor())]),
- 0.39)
+        (Pipeline(steps=[('preprocessorX',
+                        ColumnTransformer(transformers=[('numerical Transformer X',
+                                                        SimpleImputer(),
+                                                        ['int_size', 'int_gone_bad']),
+                                                        ('categorical Transformer X',
+                                                        Pipeline(steps=[('imputer',
+                                                                            SimpleImputer(strategy='most_frequent')),
+                                                                        ('encoder',
+                                                                            OrdinalEncoder())]),
+                                                        ['color', 'size'])])),
+                        ('model', RandomForestRegressor())]),
+        0.39)
 
         ```
         '''
@@ -828,6 +837,3 @@ ypred:
                                     scoring=scoring).mean()
         else:
             raise ValueError(f"Argument `how` should be among these values: {'raw','mean'}, got {how}")
-    
-    # -------------------------------------------
-    
