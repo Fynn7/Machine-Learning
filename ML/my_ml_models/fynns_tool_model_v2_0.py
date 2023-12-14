@@ -6,7 +6,7 @@ Note time: 2023.12.14 00:37
 - Encapsulate as global functions, instead of inside class methods.
 Reason: Class methods are not efficient.
 
-- Remove todf() & toseries() & raiseTypeError() & buildModelComm()
+- Removed todf() & toseries() & raiseTypeError() & buildModelComm()
 '''
 
 import numpy as np
@@ -59,7 +59,10 @@ def cleanData(X: pd.DataFrame, y: pd.Series | None = None, numColsimputeStrategy
     X.columns = numColsX+catColsX
 
     if type(y) != type(None):
-        yname=y.name
+        try:
+            yname = y.name
+        except AttributeError:
+            raise TypeError("Expect y as a pandas Series.")
         if y.dtype == 'object':
             if encoderName == 'oe':
                 encoder = OrdinalEncoder(handle_unknown=handle_unknown)
@@ -72,10 +75,48 @@ def cleanData(X: pd.DataFrame, y: pd.Series | None = None, numColsimputeStrategy
             # impute y
             y = SimpleImputer(strategy=numColsimputeStrategy).fit_transform(
                 y.values.reshape(-1, 1))
-            y=pd.DataFrame(y)
-            y.columns=[yname]
+            y = pd.DataFrame(y)
+            y.columns = [yname]
         else:
             Exception(f'Unknown dtype of y: {y.dtype}')
         return X, y
     else:
         return X
+
+
+def fitModel(tts: tuple[pd.DataFrame, pd.Series, pd.DataFrame, pd.Series], modelName: str = 'RandomForestRegressor', cv: int = 5, **modelArgs) -> tuple[pd.Series, dict[float | np.ndarray]]:
+    # if model is not given or it is given illegally
+    Xtrain, Xtest, ytrain, ytest = tts
+    if type(ytrain)==np.ndarray and type(ytest)==np.ndarray:
+        print("Found ytrain,ytest as np.ndarray type, reshaping -1 into pd.Series.")
+        ytrain,ytest=pd.Series(ytrain.reshape(-1)),pd.Series(ytest.reshape(-1))
+    try:
+        model = eval(f"{modelName}(**modelArgs)")
+        print(f'''
+        Successfully create model: {modelName}
+        ''')
+    except NameError as e:  # `modelName` type incorrect or unknown model
+        model = RandomForestRegressor(**modelArgs)
+        print(
+            f"Illegal model name or type. Model argument set to default as `RandomForestRegressor`.\nOriginal error message: {e}")
+    except Exception as e:
+        print(
+            f"Unknow error occurs while building the model.\nOriginal error message: {e}")
+    model.fit(Xtrain, ytrain)
+    pred = model.predict(Xtest)
+    score = model.score(Xtest, ytest)
+    mae_score = mean_absolute_error(ytest, pred)
+    try:
+        cv_score = -1 * cross_val_score(model, Xtrain, ytrain, cv=cv,
+                                        scoring='neg_mean_absolute_error')
+    except ValueError as e:
+        raise ValueError(
+            f"Samples maybe less than argument `cv` value as in `cross_val_score`. Try to set another `cv` value or try on with more samples.\nOriginal error message: {e}")
+    except Exception as e:
+        print(
+            f"Unknow error occurs while cross validation.\nOriginal error message: {e}")
+    print(f"y_pred:{pred};\ny_true:\n{ytest}")
+    list(fitModel.__code__.co_varnames)
+    # for attr in list(fitModel.__code__.co_varnames):
+        # print(attr,' = ',eval(attr))
+    return pred, {'score': score, 'mae_score': mae_score, 'cv_score': cv_score}
