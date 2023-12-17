@@ -105,6 +105,9 @@ def fitModel(tts: tuple[pd.DataFrame, pd.Series, pd.DataFrame, pd.Series], model
         tts: train_test_split(X,y)
         modelName: model name, default as 'RandomForestRegressor'. Support values: 'ARDRegression','AdaBoostClassifier','AdaBoostRegressor','BaggingClassifier','BaggingRegressor','BayesianRidge','BernoulliNB','CatBoostClassifier','CatBoostRegressor','ComplementNB','DecisionTreeClassifier','DecisionTreeRegressor','ElasticNet','ElasticNetCV','EllipticEnvelope','ExtraTreeRegressor','ExtraTreesClassifier','ExtraTreesRegressor','GammaRegressor','GaussianNB','GaussianProcessClassifier','GaussianProcessRegressor','GeneralizedLinearRegressor','GradientBoostingClassifier','GradientBoostingRegressor','HistGradientBoostingClassifier','HistGradientBoostingRegressor','HuberRegressor','IsolationForest','KNeighborsClassifier','KNeighborsRegressor','KernelRidge','LGBMClassifier','LGBMRegressor','LabelPropagation','LabelSpreading','Lasso','LassoCV','LinearDiscriminantAnalysis','LinearRegression','LinearSVR','LocalOutlierFactor','LogisticRegression','LogisticRegressionCV','MLPClassifier','MLPRegressor','MultinomialNB','NearestCentroid','NuSVR','OneClassSVM','OrthogonalMatchingPursuit','OrthogonalMatchingPursuitCV','PassiveAggressiveRegressor','Perceptron','PoissonRegressor','QuadraticDiscriminantAnalysis','RANSACRegressor','RadiusNeighborsClassifier','RadiusNeighborsRegressor','RandomForestRegressor','Ridge','RidgeCV','RidgeClassifier','RidgeClassifierCV','SGDClassifier','SGDRegressor','SVC','SVR','StackingClassifier','StackingRegressor','TheilSenRegressor','TweedieRegressor','VotingClassifier','VotingRegressor','XGBRegressor'
         cv: cross validation number, default as 5
+        printInfo: print model info, default as False
+        plotPred: plot prediction, default as False
+        worst_n_preds: plot worst n predictions as red dots, default as 1. 计算最差预测的n个点(diff)，并把它们标红
         **modelArgs: model arguments, default as empty dict
 
     Returns:
@@ -274,7 +277,7 @@ def fitModel(tts: tuple[pd.DataFrame, pd.Series, pd.DataFrame, pd.Series], model
     # if model is not given or it is given illegally
     Xtrain, Xtest, ytrain, ytest = tts
     if type(ytrain) == np.ndarray and type(ytest) == np.ndarray:
-        print("Found ytrain,ytest as np.ndarray type, reshaping -1 into pd.Series.")
+        print("Found ytrain,ytest both as np.ndarray type, reshaping -1 into pd.Series.")
         ytrain, ytest = pd.Series(
             ytrain.reshape(-1)), pd.Series(ytest.reshape(-1))
     try:
@@ -288,7 +291,8 @@ def fitModel(tts: tuple[pd.DataFrame, pd.Series, pd.DataFrame, pd.Series], model
             f"Unknow error occurs while building the model.\nOriginal error message: {e}")
     # variation 1:model = model.fit(Xtrain, ytrain)  (with `model=`)
     model.fit(Xtrain, ytrain)
-    pred = model.predict(Xtest)
+    ytest=ytest[ytest.columns[0]] # convert to pd.Series for plotPred! (for abs(ytest-pred) to work)
+    pred = pd.Series(model.predict(Xtest), index=ytest.index,name=ytest.name)
     score = model.score(Xtest, ytest)
     mae_score = mean_absolute_error(ytest, pred)
     try:
@@ -321,9 +325,9 @@ model arguments:\n{modelArgs}
 ------------------------------------------
     RESULTS:        
 ------------------------------------------
-y_pred:\n{pred}
+y_pred:{type(pred)}\n{pred}
 ------------------------------------------
-y_true:\n{ytest}
+y_test:{type(ytest)}\n{ytest}
 ------------------------------------------
 score: {score}
 mae_score: {mae_score}
@@ -333,7 +337,13 @@ cv_score: {cv_score}
               ''')
     if plotPred:  # only fits for 1-dimensional y
         i=ytest.index
+        if worst_n_preds>len(i): # if worst_n_preds out of range
+            raise ValueError(f"Argument `worst_n_preds` out of range: {worst_n_preds} > {len(i)}.")
+        diff = abs(ytest-pred)
+        print("diff=\n",diff,type(diff))
+        print(f"Worst {worst_n_preds} predictions:\n",diff.nlargest(worst_n_preds))
         plt.scatter(i, ytest, c='green', label='y_true')
-        plt.scatter(i, pred, c='red', label='y_pred')
+        plt.scatter(i, pred, c='orange', label='y_pred')
+        plt.scatter(diff.nlargest(worst_n_preds).index, pred[diff.nlargest(worst_n_preds).index], c='red', label='worst_n_preds')
         plt.show()
     return model, {'score': score, 'mae_score': mae_score, 'cv_score': cv_score}
