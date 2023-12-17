@@ -84,7 +84,68 @@ def cleanData(X: pd.DataFrame, y: pd.Series | None = None, numColsimputeStrategy
         return X
 
 
-def fitModel(tts: tuple[pd.DataFrame, pd.Series, pd.DataFrame, pd.Series], modelName: str = 'RandomForestRegressor', cv: int = 5, **modelArgs) -> tuple[pd.Series, dict[float | np.ndarray]]:
+def fitModel(tts: tuple[pd.DataFrame, pd.Series, pd.DataFrame, pd.Series], modelName: str = 'RandomForestRegressor', cv: int = 5, **modelArgs) -> tuple[RandomForestRegressor, dict[float | np.ndarray]]:
+    '''
+    Args:
+        tts: train_test_split(X,y)
+        modelName: model name, default as 'RandomForestRegressor'. Support values: 'ARDRegression','AdaBoostClassifier','AdaBoostRegressor','BaggingClassifier','BaggingRegressor','BayesianRidge','BernoulliNB','CatBoostClassifier','CatBoostRegressor','ComplementNB','DecisionTreeClassifier','DecisionTreeRegressor','ElasticNet','ElasticNetCV','EllipticEnvelope','ExtraTreeRegressor','ExtraTreesClassifier','ExtraTreesRegressor','GammaRegressor','GaussianNB','GaussianProcessClassifier','GaussianProcessRegressor','GeneralizedLinearRegressor','GradientBoostingClassifier','GradientBoostingRegressor','HistGradientBoostingClassifier','HistGradientBoostingRegressor','HuberRegressor','IsolationForest','KNeighborsClassifier','KNeighborsRegressor','KernelRidge','LGBMClassifier','LGBMRegressor','LabelPropagation','LabelSpreading','Lasso','LassoCV','LinearDiscriminantAnalysis','LinearRegression','LinearSVR','LocalOutlierFactor','LogisticRegression','LogisticRegressionCV','MLPClassifier','MLPRegressor','MultinomialNB','NearestCentroid','NuSVR','OneClassSVM','OrthogonalMatchingPursuit','OrthogonalMatchingPursuitCV','PassiveAggressiveRegressor','Perceptron','PoissonRegressor','QuadraticDiscriminantAnalysis','RANSACRegressor','RadiusNeighborsClassifier','RadiusNeighborsRegressor','RandomForestRegressor','Ridge','RidgeCV','RidgeClassifier','RidgeClassifierCV','SGDClassifier','SGDRegressor','SVC','SVR','StackingClassifier','StackingRegressor','TheilSenRegressor','TweedieRegressor','VotingClassifier','VotingRegressor','XGBRegressor'
+        cv: cross validation number, default as 5
+        **modelArgs: model arguments, default as empty dict
+    ```
+        >>> from fynns_tool_model_v2_0 import *
+        >>> df = pd.DataFrame({'color': ['Red', 'Green', 'Green','Green', 'Red', 'Green'],'int_gone_bad':[1,0,np.nan,0,0,0],'taste': ['Sweet', 'Sweet','Sweet', 'Sour', 'Sweet','Sour'], 'size': [
+        >>>                   'Big', 'Big', 'Small', 'Medium',np.nan, 'Small'], 'int_size': [7, 8, 2, 5,4, np.nan]})
+        >>> X=df[['color','int_size','size','int_gone_bad']]
+        >>> y=df['taste']
+        >>> X
+
+
+        color	int_size	size	int_gone_bad
+        0	Red	7.0	Big	1.0
+        1	Green	8.0	Big	0.0
+        2	Green	2.0	Small	NaN
+        3	Green	5.0	Medium	0.0
+        4	Red	4.0	NaN	0.0
+        5	Green	NaN	Small	0.0
+
+        >>> X,y=cleanData(X,y)
+        >>> X
+
+        numColsimputeStrategy: mean
+        catColsimputeStrategy: most_frequent
+        encoderName: oe 
+        handle_unknown: error    
+          
+
+        numColsX: ['int_size', 'int_gone_bad']
+        catColsX: ['color', 'size']
+          
+        int_size	int_gone_bad	color	size
+        0	7.0	1.0	1.0	0.0
+        1	8.0	0.0	0.0	0.0
+        2	2.0	0.2	0.0	2.0
+        3	5.0	0.0	0.0	1.0
+        4	4.0	0.0	1.0	0.0
+        5	5.2	0.0	0.0	2.0
+
+
+        >>> fitModel(train_test_split(X,y),cv=2)
+
+        Found ytrain,ytest as np.ndarray type, reshaping -1 into pd.Series.
+
+                Successfully create model: RandomForestRegressor
+                
+        y_pred:[0.84 0.64];
+        y_true:
+        0    1.0
+        1    0.0
+        dtype: float64
+        (RandomForestRegressor(),
+        {'score': 0.12959999999999994,
+        'mae_score': 0.4,
+        'cv_score': array([0.5  , 0.655])})
+    ```
+    '''
     # if model is not given or it is given illegally
     Xtrain, Xtest, ytrain, ytest = tts
     if type(ytrain)==np.ndarray and type(ytest)==np.ndarray:
@@ -102,7 +163,7 @@ def fitModel(tts: tuple[pd.DataFrame, pd.Series, pd.DataFrame, pd.Series], model
     except Exception as e:
         print(
             f"Unknow error occurs while building the model.\nOriginal error message: {e}")
-    model.fit(Xtrain, ytrain)
+    model=model.fit(Xtrain, ytrain) # variation 1: model.fit(Xtrain, ytrain)  (without `model=`)
     pred = model.predict(Xtest)
     score = model.score(Xtest, ytest)
     mae_score = mean_absolute_error(ytest, pred)
@@ -119,4 +180,5 @@ def fitModel(tts: tuple[pd.DataFrame, pd.Series, pd.DataFrame, pd.Series], model
     list(fitModel.__code__.co_varnames)
     # for attr in list(fitModel.__code__.co_varnames):
         # print(attr,' = ',eval(attr))
-    return pred, {'score': score, 'mae_score': mae_score, 'cv_score': cv_score}
+    return model, {'score': score, 'mae_score': mae_score, 'cv_score': cv_score}
+
