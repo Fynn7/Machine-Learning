@@ -291,8 +291,11 @@ def fitModel(tts: tuple[pd.DataFrame, pd.Series, pd.DataFrame, pd.Series], model
             f"Unknow error occurs while building the model.\nOriginal error message: {e}")
     # variation 1:model = model.fit(Xtrain, ytrain)  (with `model=`)
     model.fit(Xtrain, ytrain)
-    ytest=ytest[ytest.columns[0]] # convert to pd.Series for plotPred! (for abs(ytest-pred) to work)
-    pred = pd.Series(model.predict(Xtest), index=ytest.index,name=ytest.name)
+    try: # if ytest is pd.DataFrame, convert to pd.Series
+        ytest=ytest[ytest.columns[0]] # convert to pd.Series for plotPred! (for abs(ytest-pred) to work)
+    except AttributeError: # if ytest is pd.Series, we except `AttributeError: 'Series' object has no attribute 'columns'`
+        pass
+    pred = pd.Series(model.predict(Xtest), index=ytest.index,name=ytest.name) # convert to pd.Series for plotPred! (for abs(ytest-pred) to work)
     score = model.score(Xtest, ytest)
     mae_score = mean_absolute_error(ytest, pred)
     try:
